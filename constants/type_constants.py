@@ -1,0 +1,3 @@
+#MATRIX TYPES
+DECOMPOSEMATRIX = "decomposeMatrix"
+MULTMATRIX = "multMatrix"
