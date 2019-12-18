@@ -2,33 +2,34 @@ import maya.api.OpenMaya as om2
 from mayaTools.creation_utils import creation_utils as cUtils
 from mayaTools.constants import type_constants as tConst
 
-selList = om2.MGlobal.getActiveSelectionList()
-srcMobj = selList.getDependNode(0)
-#trgMobj = selList.getDependNode(1)
 
-
-
-def connectWithWorldMtx(srcMobj, trgMobj):
-    #assert srcMobj == True and trgMobj == True, "Please select a source and a target"
+def connectWithDecompMtx(srcMobj, trgMobj):
+    """
+    Connect and two DAG nodes using matrixDecompose
+    :param srcMobj: MObject
+    :param trgMobj: MObject
+    :return:
+    """
+    assert srcMobj, "Please select a source"
+    assert trgMobj, "Please select a target"
 
     dgMod = om2.MDGModifier()
-
     srcMFn = om2.MFnDependencyNode(srcMobj)
     trgMFn = om2.MFnDependencyNode(trgMobj)
 
-    matrixMultMobj = cUtils.createDGNode(tConst.MULTMATRIX, nodeName="test")
-    decompMobj = cUtils.createDGNode(tConst.DECOMPOSEMATRIX, nodeName="test")
+    decompMobj = cUtils.createDGNode(tConst.DECOMPOSEMATRIX, nodeName="")
 
     srcPlug = srcMFn.findPlug("worldMatrix", False)
     srcWorldMtxPlug = srcPlug.elementByLogicalIndex(0)
 
-    matrixMultMfn = om2.MFnDependencyNode(matrixMultMobj)
-    matrixMultMfnPlug = matrixMultMfn.findPlug("matrixIn", False)
-    plugIdx1 = matrixMultMfnPlug.elementByLogicalIndex(1)
+    decompMfn = om2.MFnDependencyNode(decompMobj)
+    decompMfnPlug = decompMfn.findPlug("inputMatrix", False)
 
-    dgMod.connect(srcWorldMtxPlug, plugIdx1)
-#connectWithWorldMtx(srcMobj, trgMobj)
+    for srcAttr, trgAttr in [("outputRotate", "rotate"), ("outputTranslate", "translate"), ("outputScale", "scale")]:
+        srcPlug = decompMfn.findPlug(srcAttr, False)
+        trgPlug = trgMFn.findPlug(trgAttr, False)
+        dgMod.connect(srcPlug, trgPlug)
 
+    dgMod.connect(srcWorldMtxPlug, decompMfnPlug)
 
-
-
+    dgMod.doIt()
