@@ -8,7 +8,7 @@ def connectWithDecompMtx(srcMobj, trgMobj):
     Connect and two DAG nodes using matrixDecompose
     :param srcMobj: MObject
     :param trgMobj: MObject
-    :return:
+    :return: None
     """
     assert srcMobj, "Please select a source"
     assert trgMobj, "Please select a target"
