@@ -85,11 +85,13 @@ def connectNodes(srcMobjHandle, trgMobjHandle):
         srcWorldMtxPlug = srcPlug.elementByLogicalIndex(0)
         dgMod.connect(srcWorldMtxPlug, trgPlug)
         print("connecting: {} to {}".format(srcWorldMtxPlug, trgPlug))
+
     elif trgMFn.hasAttribute("matrixIn"):
         srcWorldMtxPlug = srcPlug.elementByLogicalIndex(0)
         trgMtxPlug = trgPlug.elementByLogicalIndex(0)
         dgMod.connect(srcWorldMtxPlug, trgMtxPlug)
         print("connecting: {} to {}".format(srcWorldMtxPlug, trgMtxPlug))
+
     else:
         dgMod.connect(srcPlug, trgPlug)
 
@@ -102,7 +104,6 @@ srcType = srcMFn.typeName
 
 for mobj in mobjs[1:]:
     trgMobjHandle = om2.MObjectHandle(mobj)
-
     if srcType == "decomposeMatrix":
         connectSRT(srcMobjHandle, trgMobjHandle)
     else:
