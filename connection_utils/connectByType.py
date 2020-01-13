@@ -10,9 +10,11 @@ in form of: {NODETYPE: (INPUTPLUG, OUTPUTPLUG)}
 import maya.api.OpenMaya as om2
 dgMod = om2.MDGModifier()
 
-typeDict = {"decomposeMatrix": ("inputMatrix", ["outputRotate", "outputTranslate", "outputScale"]),
-            "transform": (["rotate", "translate", "scale"], "worldMatrix"),
-            "multMatrix": ("matrixIn", "matrixSum"), "inverseMatrix": ("inputMatrix", "outputMatrix")}
+typeDict = {
+    "decomposeMatrix": ("inputMatrix", ["outputRotate", "outputTranslate", "outputScale"]),
+    "transform": (["rotate", "translate", "scale"], "worldMatrix"),
+    "multMatrix": ("matrixIn", "matrixSum"),
+    "inverseMatrix": ("inputMatrix", "outputMatrix")}
 
 
 def getInputOutput(srcMobj, trgMobj):
