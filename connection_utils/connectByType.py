@@ -81,17 +81,15 @@ def connectNodes(srcMobjHandle, trgMobjHandle):
     srcPlug = srcMFn.findPlug(srcOutputPlugs, False)
     trgPlug = trgMFn.findPlug(trgInputPlugs, False)
 
-    if srcMFn.hasAttribute("worldMatrix") and not trgInputPlugs == "matrixIn":
+    if srcPlug.isArray and not trgMFn.hasAttribute("matrixIn"):
         srcWorldMtxPlug = srcPlug.elementByLogicalIndex(0)
         dgMod.connect(srcWorldMtxPlug, trgPlug)
         print("connecting: {} to {}".format(srcWorldMtxPlug, trgPlug))
-
     elif trgMFn.hasAttribute("matrixIn"):
         srcWorldMtxPlug = srcPlug.elementByLogicalIndex(0)
         trgMtxPlug = trgPlug.elementByLogicalIndex(0)
         dgMod.connect(srcWorldMtxPlug, trgMtxPlug)
         print("connecting: {} to {}".format(srcWorldMtxPlug, trgMtxPlug))
-
     else:
         dgMod.connect(srcPlug, trgPlug)
 
