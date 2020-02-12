@@ -29,13 +29,13 @@ def getShapeMObj(mObjHandle):
 srcMObjHandle = om2.MObjectHandle(mObjs[0])
 srcShapeMObj = getShapeMObj(srcMObjHandle)
 srcMFn = om2.MFnDependencyNode(srcShapeMObj)
-srcOverrideRGBPlug = srcMFn.findPlug("overrideColorRGB", False)
 
 # Get/Set override color
 srcDisplayOverridePlug = srcMFn.findPlug("overrideEnabled", False)
 srcDisplayOverridePlug.setBool(True)
 
 # Get override color index
+srcOverrideRGBPlug = srcMFn.findPlug("overrideColorRGB", False)
 srcOverrideColorPlug = srcMFn.findPlug("overrideColor", False)
 srcOverrideColorVal = srcOverrideColorPlug.asInt()
 
@@ -44,13 +44,13 @@ for mObj in mObjs[1:]:
     trgShapeMObj = getShapeMObj(trgMObjHandle)
     trgMFn = om2.MFnDependencyNode(trgShapeMObj)
 
-    # Get plugs
-    trgOverrideRGBPlug = trgMFn.findPlug("overrideColorRGB", False)
-    trgOverrideColorPlug = trgMFn.findPlug("overrideColor", False)
-
     # Get/Set override color
     trgDisplayOverridePlug = trgMFn.findPlug("overrideEnabled", False)
     trgDisplayOverridePlug.setBool(True)
+
+    # Get plugs
+    trgOverrideRGBPlug = trgMFn.findPlug("overrideColorRGB", False)
+    trgOverrideColorPlug = trgMFn.findPlug("overrideColor", False)
 
     # Get source RGB values
     srcRGBValList = list()
