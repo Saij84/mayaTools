@@ -106,4 +106,5 @@ for mobj in mobjs[1:]:
         connectSRT(srcMobjHandle, trgMobjHandle)
     else:
         connectNodes(srcMobjHandle, trgMobjHandle)
+
 dgMod.doIt()
