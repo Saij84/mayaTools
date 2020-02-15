@@ -23,6 +23,7 @@ def getShapeMObj(mObjHandle):
     mDagPath = om2.MDagPath.getAPathTo(mObj)
     shape = mDagPath.extendToShape()
     shapeMObj = shape.node()
+    shapeMObj
 
     return shapeMObj
 
