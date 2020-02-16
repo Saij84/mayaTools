@@ -8,8 +8,8 @@ USAGE: Select mesh vertex, run script
 
 ToDo: Add functionality to put a locator at the face center aligned to its normal
 """
+import collections as coll
 import maya.api.OpenMaya as om2
-
 selList = om2.MGlobal.getActiveSelectionList()
 
 
@@ -63,6 +63,10 @@ def createLocAtVertex():
     # Get rotation/translation
     rot = vtxMtransMtx.rotation(asQuaternion=False)
     trans = vtxMtransMtx.translation(om2.MSpace.kWorld)
+    axisData = coll.namedtuple("axis", ["X", "Y", "Z"])
+
+    translate = axisData(trans[0], trans[1], trans[2])
+    rotate = axisData(rot[0], rot[1], rot[2])
 
     if loc.isValid():
         locMObj = loc.object()
@@ -72,17 +76,17 @@ def createLocAtVertex():
         transY = mFn.findPlug("translateY", False)
         transZ = mFn.findPlug("translateZ", False)
 
-        transX.setFloat(trans[0])
-        transY.setFloat(trans[1])
-        transZ.setFloat(trans[2])
+        transX.setFloat(translate.X)
+        transY.setFloat(translate.Y)
+        transZ.setFloat(translate.Z)
 
         rotX = mFn.findPlug("rotateX", False)
         rotY = mFn.findPlug("rotateY", False)
         rotZ = mFn.findPlug("rotateZ", False)
 
-        rotX.setFloat(rot[0])
-        rotY.setFloat(rot[1])
-        rotZ.setFloat(rot[2])
+        rotX.setFloat(rotate.X)
+        rotY.setFloat(rotate.Y)
+        rotZ.setFloat(rotate.Z)
 
 vtxIDs, typeID = getVtxIDs(selList)
 
