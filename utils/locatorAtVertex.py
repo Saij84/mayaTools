@@ -10,7 +10,6 @@ ToDo: Add functionality to put a locator at the face center aligned to its norma
 """
 import collections as coll
 import maya.api.OpenMaya as om2
-selList = om2.MGlobal.getActiveSelectionList()
 
 
 def getVtxIDs(selList):
@@ -41,6 +40,7 @@ def createLocator(vtxID):
 
     locMObjHandle = om2.MObjectHandle(loc)
     return locMObjHandle
+
 
 def createLocAtVertex():
     # Get vertex normal/position
@@ -88,11 +88,13 @@ def createLocAtVertex():
         rotY.setFloat(rotate.Y)
         rotZ.setFloat(rotate.Z)
 
+
+selList = om2.MGlobal.getActiveSelectionList()
 vtxIDs, typeID = getVtxIDs(selList)
 
 for vtxID in vtxIDs:
     loc = createLocator(vtxID)
-    if typeID == 550:  #  kMeshVertComponent
+    if typeID == 550:  # kMeshVertComponent
         createLocAtVertex()
     elif typeID == 548:  # kMeshPolygonComponent
         pass
