@@ -12,29 +12,29 @@ import collections as coll
 import maya.api.OpenMaya as om2
 
 
-def getVtxIDs(selList):
+def geIDs(selList):
     """
-    Get selected vertexID/s
+    Get selected vertexID or faceID/s
     :param selList: MSelectionList
     :return: list of int
     """
-    __, vtxs = selList.getComponent(0)
-    vtxList = om2.MFnSingleIndexedComponent(vtxs)
-    vtxIdxList = vtxList.getElements()
-    selType = vtxs.apiType()
+    __, id = selList.getComponent(0)
+    idList = om2.MFnSingleIndexedComponent(id)
+    idElement = idList.getElements()
+    selType = id.apiType()
 
-    return vtxIdxList, selType
+    return idElement, selType
 
 
-def createLocator(vtxID):
+def createLocator(componentID):
     """
     create a locator with vertexID in the name
-    :param vtxID: int
+    :param componentID: int
     :return: MObjectHandle
     """
     mDagMod = om2.MDagModifier()
     loc = mDagMod.createNode("locator")
-    newName = "LOC_{}".format(vtxID)
+    newName = "LOC_{}".format(componentID)
     mDagMod.renameNode(loc, newName)
     mDagMod.doIt()
 
@@ -42,12 +42,12 @@ def createLocator(vtxID):
     return locMObjHandle
 
 
-def createLocAtVertex():
+def createLocAtVertex(componentID):
     # Get vertex normal/position
     meshMObj = selList.getDependNode(0)
     mFnMesh = om2.MFnMesh(meshMObj)
-    vtxNormal = mFnMesh.getVertexNormal(vtxID, False, om2.MSpace.kObject)
-    vtxPoint = mFnMesh.getPoint(vtxID)
+    vtxNormal = mFnMesh.getVertexNormal(componentID, False, om2.MSpace.kObject)
+    vtxPoint = mFnMesh.getPoint(componentID)
 
     # Construct a matrix
     mtxConstruct = (
@@ -64,7 +64,6 @@ def createLocAtVertex():
     rot = vtxMtransMtx.rotation(asQuaternion=False)
     trans = vtxMtransMtx.translation(om2.MSpace.kWorld)
     axisData = coll.namedtuple("axis", ["X", "Y", "Z"])
-
     translate = axisData(trans[0], trans[1], trans[2])
     rotate = axisData(rot[0], rot[1], rot[2])
 
@@ -90,12 +89,12 @@ def createLocAtVertex():
 
 
 selList = om2.MGlobal.getActiveSelectionList()
-vtxIDs, typeID = getVtxIDs(selList)
+componentIDs, typeID = geIDs(selList)
 
-for vtxID in vtxIDs:
-    loc = createLocator(vtxID)
+for id in componentIDs:
     if typeID == 550:  # kMeshVertComponent
-        createLocAtVertex()
+        loc = createLocator(id)
+        createLocAtVertex(id)
     elif typeID == 548:  # kMeshPolygonComponent
         pass
     else:
