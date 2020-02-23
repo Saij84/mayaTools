@@ -2,7 +2,7 @@
 Author:Fangmin Chen
 Version: 0.1
 
-This script will add an locator at a selected vertex aligned to its normals
+This script will add an locator at a selected vertex aligned(not necessary same orientation) to its normals
 
 USAGE: Select mesh vertex, run script
 
@@ -54,10 +54,11 @@ def getNodeMatrix(mObjHandle, searchMatrix="worldMatrix"):
         getMtxPlug = mFn.findPlug(searchMatrix, False)
 
         mtxPlug = getMtxPlug
-        if getMtxPlug.isArray():
+        if getMtxPlug.isArray:
             mtxPlug = getMtxPlug.elementByLogicalIndex(0)
+        plugMObj = mtxPlug.asMObject()
 
-        mFnMtxData = om2.MFnMatrixData(mtxPlug)
+        mFnMtxData = om2.MFnMatrixData(plugMObj)
         mMatrixData = mFnMtxData.matrix()
 
         return mMatrixData
@@ -73,8 +74,8 @@ def createLocAtVertex(selList, componentID):
     # Get vertex normal/position
     meshDagPath = selList.getDagPath(0)
     mFnMesh = om2.MFnMesh(meshDagPath)
-    vtxNormal = mFnMesh.getVertexNormal(componentID, False, om2.MSpace.kWorld)
-    vtxPoint = mFnMesh.getPoint(componentID, om2.MSpace.kWorld)
+    vtxNormal = mFnMesh.getVertexNormal(componentID, False, om2.MSpace.kObject)
+    vtxPoint = mFnMesh.getPoint(componentID, om2.MSpace.kObject)
 
     # Get offsetMatrix
     mObj = selList.getDependNode(0)
