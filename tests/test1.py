@@ -37,39 +37,88 @@ def getPolygonCenter(selList, componentID):
 
     while not iter.isDone():
         dag, mObj = selList.getComponent(0)
+        selMObj = selList.getDependNode(0)
         norm = om2.MFnMesh(dag)
         pNormal = norm.getPolygonNormal(componentID)
 
-        mFn = om2.MFnDependencyNode(dag)
+        mFn = om2.MFnDependencyNode(selMObj)
         wMtx = mFn.findPlug("worldMatrix", False)
         mtxPlug = wMtx.elementByLogicalIndex(0)
+        mtxMObj = mtxPlug.asMObject()
 
-        wMmtx = om2.MMatrix(mtxPlug)
-        print(wMtx)
+        mtxMFn = om2.MFnMatrixData(mtxMObj)
+        mtx = mtxMFn.matrix()
 
         polyIter = om2.MItMeshPolygon(dag, mObj)
         while not polyIter.isDone():
+
+            triMPointList, triVtxID = polyIter.getTriangle(0)
+
+            point0 = triMPointList[0]
+            point1 = triMPointList[1]
+            point2 = triMPointList[2]
+
             polygonCenterMPoint = polyIter.center(om2.MSpace.kWorld)
+            centerVector = om2.MVector(polygonCenterMPoint.x, polygonCenterMPoint.y, polygonCenterMPoint.z)
+
+            p1Vector = om2.MVector(point0.x, point0.y, point0.z)
+            p2Vector = om2.MVector(point1.x, point1.y, point1.z)
+            p3Vector = om2.MVector(point2.x, point2.y, point2.z)
+
+            vector0 = point1 - point0
+            vector1 = point2 - point1
+
+            normalVector = vector0 ^ vector1
+
+            createLocator("center", centerVector)
+            createLocator("p1", p1Vector)
+            createLocator("p2", p2Vector)
+            createLocator("p3", p3Vector)
+            createLocator("vector0", vector0)
+            createLocator("vector1", vector1)
+            createLocator("normal", normalVector)
+
+
             polygonNormalCenter.append((pNormal, polygonCenterMPoint))
             polyIter.next(0)
         iter.next()
 
     return polygonNormalCenter
 
-def createLocator(componentID):
+def createLocator(name, locVector):
     """
     create a locator with vertexID in the name
     :param componentID: int
     :return: MObjectHandle
     """
+    locLocalScale = 0.1
     mDagMod = om2.MDagModifier()
+    mDagPath = om2.MDagPath()
     loc = mDagMod.createNode("locator")
-    newName = "LOC_{}".format(componentID)
+    locMFn = om2.MFnDependencyNode(loc)
+    newName = "LOC_{}".format(name)
     mDagMod.renameNode(loc, newName)
     mDagMod.doIt()
 
-    locMObjHandle = om2.MObjectHandle(loc)
-    return locMObjHandle
+    dagPath = mDagPath.getAPathTo(loc)
+    shapeDagPath = dagPath.extendToShape()
+    shapeMObj = shapeDagPath.node()
+    shapeMFn = om2.MFnDependencyNode(shapeMObj)
+
+    shapeLocalScaleX = shapeMFn.findPlug("localScaleX", False)
+    shapeLocalScaleY = shapeMFn.findPlug("localScaleY", False)
+    shapeLocalScaleZ = shapeMFn.findPlug("localScaleZ", False)
+    shapeLocalScaleX.setFloat(locLocalScale)
+    shapeLocalScaleY.setFloat(locLocalScale)
+    shapeLocalScaleZ.setFloat(locLocalScale)
+
+    transX = locMFn.findPlug("translateX", False)
+    transY = locMFn.findPlug("translateY", False)
+    transZ = locMFn.findPlug("translateZ", False)
+    transX.setFloat(locVector.x)
+    transY.setFloat(locVector.y)
+    transZ.setFloat(locVector.z)
+
 
 def createLocAtFace(componentID, selList):
     polygonCenters = getPolygonCenter(selList, componentID)
@@ -87,29 +136,27 @@ def createLocAtFace(componentID, selList):
         # Get rotation/translation
         rot = polygonMtransMtx.rotation(asQuaternion=False)
         trans = polygonMtransMtx.translation(om2.MSpace.kWorld)
-        axisData = coll.namedtuple("axis", ["X", "Y", "Z"])
-        translate = axisData(trans[0], trans[1], trans[2])
-        rotate = axisData(rot[0], rot[1], rot[2])
 
-        if loc.isValid():
-            locMObj = loc.object()
-            mFn = om2.MFnDependencyNode(locMObj)
 
-            transX = mFn.findPlug("translateX", False)
-            transY = mFn.findPlug("translateY", False)
-            transZ = mFn.findPlug("translateZ", False)
-
-            transX.setFloat(translate.X)
-            transY.setFloat(translate.Y)
-            transZ.setFloat(translate.Z)
-
-            rotX = mFn.findPlug("rotateX", False)
-            rotY = mFn.findPlug("rotateY", False)
-            rotZ = mFn.findPlug("rotateZ", False)
-
-            rotX.setFloat(rotate.X)
-            rotY.setFloat(rotate.Y)
-            rotZ.setFloat(rotate.Z)
+        # if loc.isValid():
+        #     locMObj = loc.object()
+        #     mFn = om2.MFnDependencyNode(locMObj)
+        #
+        #     transX = mFn.findPlug("translateX", False)
+        #     transY = mFn.findPlug("translateY", False)
+        #     transZ = mFn.findPlug("translateZ", False)
+        #
+        #     transX.setFloat(translate.X)
+        #     transY.setFloat(translate.Y)
+        #     transZ.setFloat(translate.Z)
+        #
+        #     rotX = mFn.findPlug("rotateX", False)
+        #     rotY = mFn.findPlug("rotateY", False)
+        #     rotZ = mFn.findPlug("rotateZ", False)
+        #
+        #     rotX.setFloat(rotate.X)
+        #     rotY.setFloat(rotate.Y)
+        #     rotZ.setFloat(rotate.Z)
 
 def createLocAtVertex(componentID):
     # Get vertex normal/position
@@ -166,7 +213,6 @@ if typeID == 550:  # kMeshVertComponent
         loc = createLocator(id)
         createLocAtVertex(id)
 elif typeID == 548:  # kMeshPolygonComponent
-    loc = createLocator(componentIDs[0])
     createLocAtFace(componentIDs[0], selList)
 
 else:

@@ -51,7 +51,7 @@ def createLocAtVertex(componentID, selList):
     wMtxPlug = wMtxTopPlug.elementByLogicalIndex(0)
     wMtxMObj = wMtxPlug.asMObject()
 
-    print(om2.MFnMatrixArrayData(wMtxMObj).)
+    print(om2.MFnMatrixArrayData(wMtxMObj))
 
 
     mFnMesh = om2.MFnMesh(meshDagPath)
