@@ -1,17 +1,41 @@
+"""
+Author:Fangmin Chen
+Version: 0.1
+
+This script will add an locator at a selected polygon aligned(not necessary same orientation) to its normals
+
+USAGE: Select mesh/polygon, run script
+"""
 import maya.api.OpenMaya as om2
 
-def getNodeMatrix(mObjHandle, searchMatrix="worldMatrix"):
+
+def geIDsAndTypes(selList):
+    """
+    Get selected component's ID/s
+    :param selList: MSelectionList
+    :return: list of int
+    """
+    __, id = selList.getComponent(0)
+    idList = om2.MFnSingleIndexedComponent(id)
+    idElement = idList.getElements()
+    selType = id.apiType()
+
+    return idElement, selType
+
+
+def getNodeMatrix(mObjHandle, searchString="worldMatrix"):
     """
     Search for a matrix plug and return it as a MMatrix
     :param mObjHandle: MObjectHandle
-    :param searchMatrix: string
+    :param searchString: string
     :return: MMatrix
     """
     if mObjHandle.isValid():
         mObj = mObjHandle.object()
         mFn = om2.MFnDependencyNode(mObj)
-        getMtxPlug = mFn.findPlug(searchMatrix, False)
+        getMtxPlug = mFn.findPlug(searchString, False)
 
+        # Handle array plugs
         mtxPlug = getMtxPlug
         if getMtxPlug.isArray:
             mtxPlug = getMtxPlug.elementByLogicalIndex(0)
@@ -22,17 +46,20 @@ def getNodeMatrix(mObjHandle, searchMatrix="worldMatrix"):
 
         return mMatrixData
 
-def createLocator(name, mDagMod):
+
+def createLocator(name, selType, mDagMod):
     """
     create a locator with vertexID in the name
-    :param componentID: int
+    :param componentID: str/int
+    :param selType: str
+    :param mDagMod: MDagModifier
     :return: MObjectHandle
     """
     locLocalScale = 0.1
     mDagMod = om2.MDagModifier()
     mDagPath = om2.MDagPath()
     loc = mDagMod.createNode("locator")
-    newName = "LOC_f{}".format(name)
+    newName = "LOC_{}_{}".format(selType, name)
     mDagMod.renameNode(loc, newName)
 
     locMObjHandle = om2.MObjectHandle(loc)
@@ -53,16 +80,16 @@ def createLocator(name, mDagMod):
     return locMObjHandle
 
 
-def getPolygonCenter(selList, mDagMod):
+def createLocAtFace(selList, mDagMod):
     """
-    Method to iter through an selection list components and return center of an polygon
-    :param selList: MSelectionList
-    :return: list
+    Method to create a locator at face center and align it to it's normal
+    :param selList: MSelsctionList
+    :param mDagMod: MDagModifier
+    :return: None
     """
     iter = om2.MItSelectionList(selList, om2.MFn.kMeshPolygonComponent)
     mObj = selList.getDependNode(0)
     mObjHandle = om2.MObjectHandle(mObj)
-
     offsetMtx = getNodeMatrix(mObjHandle)
 
     while not iter.isDone():
@@ -71,22 +98,27 @@ def getPolygonCenter(selList, mDagMod):
         idElement = idList.getElements()
         polyIter = om2.MItMeshPolygon(dag, mObj)
         while not polyIter.isDone():
+
+            # Get polygon points
             triMPointList, triVtxID = polyIter.getTriangle(0)
             point1 = triMPointList[0]
             point2 = triMPointList[1]
             point3 = triMPointList[2]
-
             polygonCenterMPoint = polyIter.center(om2.MSpace.kObject)
 
+            # Convert points to MVectors
             p1Vector = om2.MVector(point1.x, point1.y, point1.z)
             p2Vector = om2.MVector(point2.x, point2.y, point2.z)
             p3Vector = om2.MVector(point3.x, point3.y, point3.z)
 
+            # Find Mid points to aim at
             p1MidVector = p2Vector - p1Vector
             p2MidVector = p3Vector - p1Vector
 
             vector1 = point3 - point1
             vector2 = point2 - point1
+
+            # Cross vectors NOTE: vectors2 is negative ti make X axsis aiming "out"
             normalVector = vector1 ^ -vector2
 
             mtx = (
@@ -101,7 +133,8 @@ def getPolygonCenter(selList, mDagMod):
             trans = mTransMtx.translation(om2.MSpace.kWorld)
             rot = mTransMtx.rotation()
 
-            locMObjHandle = createLocator(idElement[0], mDagMod)
+            # Set transform
+            locMObjHandle = createLocator(idElement[0], "f", mDagMod)
             if locMObjHandle.isValid():
                 locMObj = locMObjHandle.object()
                 locMFn = om2.MFnDependencyNode(locMObj)
@@ -122,7 +155,14 @@ def getPolygonCenter(selList, mDagMod):
             polyIter.next(0)
         iter.next()
 
+    print("Done! Face locator/s created and placed!")
+
+
 selList = om2.MGlobal.getActiveSelectionList()
+componentIDs, typeID = geIDsAndTypes(selList)
 mDagMod = om2.MDagModifier()
 
-getPolygonCenter(selList, mDagMod)
+if typeID == 548:  # kMeshPolygonComponent
+    createLocAtFace(selList, mDagMod)
+else:
+    print("Please select an polygon")

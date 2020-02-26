@@ -2,9 +2,9 @@
 Author:Fangmin Chen
 Version: 0.1
 
-This script will add an locator at a selected vertex aligned(not necessary same orientation) to its normals
+This script will add an locator at a selected vertex/polygon aligned(not necessary same orientation) to its normals
 
-USAGE: Select mesh/vertex, run script
+USAGE: Select mesh/polygon vertex, run script
 """
 import maya.api.OpenMaya as om2
 
@@ -134,6 +134,84 @@ def createLocAtVertex(selList, componentID, mDagMod):
     print("Done! Vertex locator/s created and placed!")
 
 
+def createLocAtFace(selList, mDagMod):
+    """
+    Method to create a locator at face center and align it to it's normal
+    :param selList: MSelsctionList
+    :param mDagMod: MDagModifier
+    :return: None
+    """
+    iter = om2.MItSelectionList(selList, om2.MFn.kMeshPolygonComponent)
+    mObj = selList.getDependNode(0)
+    mObjHandle = om2.MObjectHandle(mObj)
+    offsetMtx = getNodeMatrix(mObjHandle)
+
+    while not iter.isDone():
+        dag, mObj = selList.getComponent(0)
+        idList = om2.MFnSingleIndexedComponent(mObj)
+        idElement = idList.getElements()
+        polyIter = om2.MItMeshPolygon(dag, mObj)
+        while not polyIter.isDone():
+
+            # Get polygon points
+            triMPointList, triVtxID = polyIter.getTriangle(0)
+            point1 = triMPointList[0]
+            point2 = triMPointList[1]
+            point3 = triMPointList[2]
+            polygonCenterMPoint = polyIter.center(om2.MSpace.kObject)
+
+            # Convert points to MVectors
+            p1Vector = om2.MVector(point1.x, point1.y, point1.z)
+            p2Vector = om2.MVector(point2.x, point2.y, point2.z)
+            p3Vector = om2.MVector(point3.x, point3.y, point3.z)
+
+            # Find Mid points to aim at
+            p1MidVector = p2Vector - p1Vector
+            p2MidVector = p3Vector - p1Vector
+
+            vector1 = point3 - point1
+            vector2 = point2 - point1
+
+            # Cross vectors NOTE: vectors2 is negative ti make X axsis aiming "out"
+            normalVector = vector1 ^ -vector2
+
+            mtx = (
+                normalVector.x, normalVector.y, normalVector.z, 0,
+                p2MidVector.x, p2MidVector.y, p2MidVector.z, 0,
+                p1MidVector.x, p1MidVector.y, p1MidVector.z, 0,
+                polygonCenterMPoint.x, polygonCenterMPoint.y, polygonCenterMPoint.z, polygonCenterMPoint.w
+            )
+
+            compositMtx = om2.MMatrix(mtx) * offsetMtx
+            mTransMtx = om2.MTransformationMatrix(compositMtx)
+            trans = mTransMtx.translation(om2.MSpace.kWorld)
+            rot = mTransMtx.rotation()
+
+            # Set transform
+            locMObjHandle = createLocator(idElement[0], "f", mDagMod)
+            if locMObjHandle.isValid():
+                locMObj = locMObjHandle.object()
+                locMFn = om2.MFnDependencyNode(locMObj)
+
+                transX = locMFn.findPlug("translateX", False)
+                transY = locMFn.findPlug("translateY", False)
+                transZ = locMFn.findPlug("translateZ", False)
+                transX.setFloat(trans.x)
+                transY.setFloat(trans.y)
+                transZ.setFloat(trans.z)
+
+                rotX = locMFn.findPlug("rotateX", False)
+                rotY = locMFn.findPlug("rotateY", False)
+                rotZ = locMFn.findPlug("rotateZ", False)
+                rotX.setFloat(rot.x)
+                rotY.setFloat(rot.y)
+                rotZ.setFloat(rot.z)
+            polyIter.next(0)
+        iter.next()
+
+    print("Done! Face locator/s created and placed!")
+
+
 selList = om2.MGlobal.getActiveSelectionList()
 componentIDs, typeID = geIDsAndTypes(selList)
 mDagMod = om2.MDagModifier()
@@ -141,5 +219,7 @@ mDagMod = om2.MDagModifier()
 if typeID == 550:  # kMeshVertComponent
     for componentID in componentIDs:
         createLocAtVertex(selList, componentID, mDagMod)
+elif typeID == 548:  # kMeshPolygonComponent
+    createLocAtFace(selList, mDagMod)
 else:
-    print("Please select a vertex")
+    pass
