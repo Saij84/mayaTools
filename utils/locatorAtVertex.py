@@ -23,30 +23,6 @@ def geIDsAndTypes(selList):
     return idElement, selType
 
 
-def getNodeMatrix(mObjHandle, searchString="worldMatrix"):
-    """
-    Search for a matrix plug and return it as a MMatrix
-    :param mObjHandle: MObjectHandle
-    :param searchString: string
-    :return: MMatrix
-    """
-    if mObjHandle.isValid():
-        mObj = mObjHandle.object()
-        mFn = om2.MFnDependencyNode(mObj)
-        getMtxPlug = mFn.findPlug(searchString, False)
-
-        # Handle array plugs
-        mtxPlug = getMtxPlug
-        if getMtxPlug.isArray:
-            mtxPlug = getMtxPlug.elementByLogicalIndex(0)
-        plugMObj = mtxPlug.asMObject()
-
-        mFnMtxData = om2.MFnMatrixData(plugMObj)
-        mMatrixData = mFnMtxData.matrix()
-
-        return mMatrixData
-
-
 def createLocator(name, selType, mDagMod):
     """
     create a locator with vertexID in the name
@@ -95,8 +71,14 @@ def createLocAtVertex(selList, componentID, mDagMod):
     vtxPoint = mFnMesh.getPoint(componentID, om2.MSpace.kObject)
 
     mObj = selList.getDependNode(0)
-    mObjHandle = om2.MObjectHandle(mObj)
-    offsetMtx = getNodeMatrix(mObjHandle)
+    mFn = om2.MFnDependencyNode(mObj)
+    getMtxPlug = mFn.findPlug("worldMatrix", False)
+
+    mtxPlug = getMtxPlug.elementByLogicalIndex(0)
+    plugMObj = mtxPlug.asMObject()
+
+    mFnMtxData = om2.MFnMatrixData(plugMObj)
+    offsetMtx = mFnMtxData.matrix()
 
     # Construct a matrix
     mtxConstruct = (
