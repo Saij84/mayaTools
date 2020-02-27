@@ -35,7 +35,7 @@ def createLocator(name, selType, mDagMod):
     mDagMod = om2.MDagModifier()
     mDagPath = om2.MDagPath()
     loc = mDagMod.createNode("locator")
-    newName = "LOC_{}_{}".format(selType, name)
+    newName = "{}_{}_LOC".format(selType, name)
     mDagMod.renameNode(loc, newName)
 
     locMObjHandle = om2.MObjectHandle(loc)
@@ -105,8 +105,8 @@ def createLocAtFace(selList, mDagMod):
 
             mtx = (
                 normalVector.x, normalVector.y, normalVector.z, 0,
-                p2MidVector.x, p2MidVector.y, p2MidVector.z, 0,
                 p1MidVector.x, p1MidVector.y, p1MidVector.z, 0,
+                p2MidVector.x, p2MidVector.y, p2MidVector.z, 0,
                 polygonCenterMPoint.x, polygonCenterMPoint.y, polygonCenterMPoint.z, polygonCenterMPoint.w
             )
 
@@ -137,8 +137,6 @@ def createLocAtFace(selList, mDagMod):
             polyIter.next(0)
         iter.next()
 
-    print("Done! Face locator/s created and placed!")
-
 
 selList = om2.MGlobal.getActiveSelectionList()
 componentIDs, typeID = geIDsAndTypes(selList)
@@ -146,5 +144,6 @@ mDagMod = om2.MDagModifier()
 
 if typeID == 548:  # kMeshPolygonComponent
     createLocAtFace(selList, mDagMod)
+    print("Done! Face locator/s created and placed!")
 else:
     print("Please select an polygon")

@@ -35,7 +35,7 @@ def createLocator(name, selType, mDagMod):
     mDagMod = om2.MDagModifier()
     mDagPath = om2.MDagPath()
     loc = mDagMod.createNode("locator")
-    newName = "LOC_{}_{}".format(selType, name)
+    newName = "{}_{}_LOC".format(selType, name)
     mDagMod.renameNode(loc, newName)
 
     locMObjHandle = om2.MObjectHandle(loc)
@@ -113,7 +113,6 @@ def createLocAtVertex(selList, componentID, mDagMod):
         rotX.setFloat(rot.x)
         rotY.setFloat(rot.y)
         rotZ.setFloat(rot.z)
-    print("Done! Vertex locator/s created and placed!")
 
 
 selList = om2.MGlobal.getActiveSelectionList()
@@ -123,5 +122,6 @@ mDagMod = om2.MDagModifier()
 if typeID == 550:  # kMeshVertComponent
     for componentID in componentIDs:
         createLocAtVertex(selList, componentID, mDagMod)
+    print("Done! Vertex locator/s created and placed!")
 else:
     print("Please select a vertex")
