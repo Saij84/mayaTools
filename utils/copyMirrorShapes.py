@@ -3,7 +3,6 @@ Author:Fangmin Chen
 Version: 0.1
 
 This script will copy a shape node and negX it across XY plane
-NOTE: WIP version does not copy the shape using locator currently
 
 USAGE: Select a curve, run script
 """
@@ -95,13 +94,28 @@ negX = (
 )
 negXMtx = om2.MMatrix(negX)
 
-# get MObject
+# Get current selection MObject
 mObj = selList.getDependNode(0)
 mObjHandle = om2.MObjectHandle(mObj)
 mFn = om2.MFnDependencyNode(mObj)
 objName = mFn.name()
 
-# Create and apply translate, rotate and scale
+# Create a group node to apply the world matrix and potentially negX matrix
+transformMObj = om2.MObject()  # Placeholder for transform MObject as it needs to be accessed later in the script
+transformNode = createDagNode("transform", "curveTransform", mDagMod)
+if transformNode.isValid():
+    transformMObj = transformNode.object()
+
+# Get shape node and get shape node control points
+nurbsMFn = om2.MFnNurbsCurve()
+dagPath = selList.getDagPath(0)
+shape = dagPath.extendToShape()
+shapeMObj = shape.node()
+
+# Copy and parent selected shape
+nurbsMFn.copy(shapeMObj, transformMObj)
+
+# Get from matrix translate, rotate and scale
 worldMtx = getNodeMatrix(mObjHandle) * negXMtx
 mTransMtx = om2.MTransformationMatrix(worldMtx)
 scale = mTransMtx.scale(om2.MSpace.kWorld)
@@ -112,50 +126,13 @@ transformDict = {"translate": trans,
                  "rotate": rot,
                  "scale": scale}
 
-# Create a group node to apply the world matrix and potentially negX matrix
-transformMObj = om2.MObject()  # Placeholder for transform MObject as it needs to be accessed later in the script
-transformNode = createDagNode("transform", "curveTransform", mDagMod)
-if transformNode.isValid():
-    transformMObj = transformNode.object()
-
-# Get shape node and get shape node control points
-dagPath = selList.getDagPath(0)
-shape = dagPath.extendToShape()
-shapeMObj = shape.node()
-
-shapeMFn = om2.MFnDependencyNode(shapeMObj)
-shapeCtrlPoints = shapeMFn.findPlug("controlPoints", False)
-shapeCtrlPointCount = shapeCtrlPoints.numElements()
-
-for idx in range(shapeCtrlPointCount):
-    shapeElement = shapeCtrlPoints.elementByLogicalIndex(idx)
-    shapePointValX = shapeElement.child(0).asFloat()
-    shapePointValY = shapeElement.child(1).asFloat()
-    shapePointValZ = shapeElement.child(2).asFloat()
-
-    # Create locator for given control point xyz
-    locMObj = om2.MObject()
-    locatorMobjHandle = createLocator(objName, "type", mDagMod)
-    if locatorMobjHandle.isValid():
-        locMObj = locatorMobjHandle.object()
-
-    # Set XYZ value to locator
-    locMFn = om2.MFnDependencyNode(locMObj)
-    transX = locMFn.findPlug("translateX", False)
-    transY = locMFn.findPlug("translateY", False)
-    transZ = locMFn.findPlug("translateZ", False)
-    transX.setFloat(shapePointValX)
-    transY.setFloat(shapePointValY)
-    transZ.setFloat(shapePointValZ)
-
-    # re-parent locator to group node
-    mDagMod.reparentNode(locMObj, transformMObj)
-
 # Apply world transform (could include negX mtx)
 transformMFn = om2.MFnDependencyNode(transformMObj)
-for attr in ["translate", "rotate", "scale"]:
+srtAttrs = ["translate", "rotate", "scale"]
+for attr in srtAttrs:
     attrPlug = transformMFn.findPlug(attr, False)
     attrPlug.child(0).setFloat(transformDict[attr][0])
     attrPlug.child(1).setFloat(transformDict[attr][1])
     attrPlug.child(2).setFloat(transformDict[attr][2])
+
 mDagMod.doIt()
