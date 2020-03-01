@@ -56,7 +56,6 @@ def createLocator(name, selType, mDagMod):
     :return: MObjectHandle
     """
     locLocalScale = 0.1
-    mDagMod = om2.MDagModifier()
     mDagPath = om2.MDagPath()
     loc = mDagMod.createNode("locator")
     newName = "LOC_{}_{}".format(selType, name)
@@ -222,4 +221,4 @@ if typeID == 550:  # kMeshVertComponent
 elif typeID == 548:  # kMeshPolygonComponent
     createLocAtFace(selList, mDagMod)
 else:
-    pass
+    print("Please select an polygon")

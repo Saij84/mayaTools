@@ -32,7 +32,6 @@ def createLocator(name, selType, mDagMod):
     :return: MObjectHandle
     """
     locLocalScale = 0.1
-    mDagMod = om2.MDagModifier()
     mDagPath = om2.MDagPath()
     loc = mDagMod.createNode("locator")
     newName = "{}_{}_LOC".format(selType, name)
