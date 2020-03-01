@@ -2,9 +2,9 @@
 Author:Fangmin Chen
 Version: 0.1
 
-This script will copy a shape node and negX it across XY plane
+This script will copy shape/s node apply negX across XY plane
 
-USAGE: Select a curve, run script
+USAGE: Select curve/s, run script
 """
 
 import maya.api.OpenMaya as om2
@@ -84,8 +84,9 @@ def createDagNode(nodeType, nodeName, mDagMod):
 
 mDagMod = om2.MDagModifier()
 selList = om2.MGlobal.getActiveSelectionList()
+mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 
-# Create negX matrix
+# Construct negX matrix
 negX = (
     -1, 0, 0, 0,
     0, 1, 0, 0,
@@ -94,45 +95,46 @@ negX = (
 )
 negXMtx = om2.MMatrix(negX)
 
-# Get current selection MObject
-mObj = selList.getDependNode(0)
-mObjHandle = om2.MObjectHandle(mObj)
-mFn = om2.MFnDependencyNode(mObj)
-objName = mFn.name()
+for mObj in mObjs:
+    # Get current selection MObject
+    mObjHandle = om2.MObjectHandle(mObj)
+    mFn = om2.MFnDependencyNode(mObj)
+    objName = mFn.name()
 
-# Create a group node to apply the world matrix and potentially negX matrix
-transformMObj = om2.MObject()  # Placeholder for transform MObject as it needs to be accessed later in the script
-transformNode = createDagNode("transform", "curveTransform", mDagMod)
-if transformNode.isValid():
-    transformMObj = transformNode.object()
+    # Create a group node to apply the world matrix and potentially negX matrix
+    transformMObj = om2.MObject()  # Placeholder for transform MObject as it needs to be accessed later in the script
+    transformNode = createDagNode("transform", "{}_COPY".format(objName), mDagMod)
+    if transformNode.isValid():
+        transformMObj = transformNode.object()
 
-# Get shape node and get shape node control points
-nurbsMFn = om2.MFnNurbsCurve()
-dagPath = selList.getDagPath(0)
-shape = dagPath.extendToShape()
-shapeMObj = shape.node()
+    # Get shape node and get shape node control points
+    nurbsMFn = om2.MFnNurbsCurve()
+    dagPath = selList.getDagPath(0)
+    shape = dagPath.extendToShape()
+    shapeMObj = shape.node()
 
-# Copy and parent selected shape
-nurbsMFn.copy(shapeMObj, transformMObj)
+    # Copy and parent selected shape
+    nurbsMFn.copy(shapeMObj, transformMObj)
 
-# Get from matrix translate, rotate and scale
-worldMtx = getNodeMatrix(mObjHandle) * negXMtx
-mTransMtx = om2.MTransformationMatrix(worldMtx)
-scale = mTransMtx.scale(om2.MSpace.kWorld)
-rot = mTransMtx.rotation()
-trans = mTransMtx.translation(om2.MSpace.kWorld)
+    # Get from matrix translate, rotate and scale
+    worldMtx = getNodeMatrix(mObjHandle) * negXMtx
+    mTransMtx = om2.MTransformationMatrix(worldMtx)
+    scale = mTransMtx.scale(om2.MSpace.kWorld)
+    rot = mTransMtx.rotation()
+    trans = mTransMtx.translation(om2.MSpace.kWorld)
 
-transformDict = {"translate": trans,
-                 "rotate": rot,
-                 "scale": scale}
+    transformDict = {"translate": trans,
+                     "rotate": rot,
+                     "scale": scale}
 
-# Apply world transform (could include negX mtx)
-transformMFn = om2.MFnDependencyNode(transformMObj)
-srtAttrs = ["translate", "rotate", "scale"]
-for attr in srtAttrs:
-    attrPlug = transformMFn.findPlug(attr, False)
-    attrPlug.child(0).setFloat(transformDict[attr][0])
-    attrPlug.child(1).setFloat(transformDict[attr][1])
-    attrPlug.child(2).setFloat(transformDict[attr][2])
+    # Apply world transform (could include negX mtx)
+    transformMFn = om2.MFnDependencyNode(transformMObj)
+    srtAttrs = ["translate", "rotate", "scale"]
+    for attr in srtAttrs:
+        attrPlug = transformMFn.findPlug(attr, False)
+        attrPlug.child(0).setFloat(transformDict[attr][0])
+        attrPlug.child(1).setFloat(transformDict[attr][1])
+        attrPlug.child(2).setFloat(transformDict[attr][2])
 
+print("Your curve/s has been copied and reflected!")
 mDagMod.doIt()
