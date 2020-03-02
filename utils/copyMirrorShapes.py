@@ -34,38 +34,6 @@ def getNodeMatrix(mObjHandle, searchString="worldMatrix"):
         return mMatrixData
 
 
-def createLocator(name, selType, mDagMod):
-    """
-    create a locator with vertexID in the name
-    :param componentID: str/int
-    :param selType: str
-    :param mDagMod: MDagModifier
-    :return: MObjectHandle
-    """
-    locLocalScale = 0.5
-    mDagPath = om2.MDagPath()
-    loc = mDagMod.createNode("locator")
-    newName = "{}_{}_LOC".format(selType, name)
-    mDagMod.renameNode(loc, newName)
-
-    locMObjHandle = om2.MObjectHandle(loc)
-    mDagMod.doIt()
-
-    dagPath = mDagPath.getAPathTo(loc)
-    shapeDagPath = dagPath.extendToShape()
-    shapeMObj = shapeDagPath.node()
-    shapeMFn = om2.MFnDependencyNode(shapeMObj)
-
-    shapeLocalScaleX = shapeMFn.findPlug("localScaleX", False)
-    shapeLocalScaleY = shapeMFn.findPlug("localScaleY", False)
-    shapeLocalScaleZ = shapeMFn.findPlug("localScaleZ", False)
-    shapeLocalScaleX.setFloat(locLocalScale)
-    shapeLocalScaleY.setFloat(locLocalScale)
-    shapeLocalScaleZ.setFloat(locLocalScale)
-
-    return locMObjHandle
-
-
 def createDagNode(nodeType, nodeName, mDagMod):
     """
     Create and rename node
@@ -136,5 +104,5 @@ for mObj in mObjs:
         attrPlug.child(1).setFloat(transformDict[attr][1])
         attrPlug.child(2).setFloat(transformDict[attr][2])
 
-print("Your curve/s has been copied and reflected!")
+print("Your curve/s has been copied and negX-ed!")
 mDagMod.doIt()
