@@ -1,14 +1,13 @@
 import maya.api.OpenMaya as om2
 import math
 
-
 def maya_useNewAPI():
     pass
 
 
 class Matrix2Vectors(om2.MPxNode):
     node_name = 'matrix2Vectors'
-    node_id = om2.MTypeId(0x83112)
+    node_id = om2.MTypeId(0x83119)
     mtxIn = om2.MObject()
     row0 = om2.MObject()
     row1 = om2.MObject()
@@ -80,21 +79,32 @@ class Matrix2Vectors(om2.MPxNode):
         Matrix2Vectors.attributeAffects(Matrix2Vectors.mtxIn, Matrix2Vectors.row3)
 
     def compute(self, plug, data):
-        print("---------------------COMPUTE---------------------")
+        mtxMObj = om2.MFnDependencyNode(self.thisMObject())
+        mtxInPlug = mtxMObj.findPlug("mtxIn", False)
+        mtxInPlugMobj = mtxInPlug.asMObject()
+        mtxIn = om2.MFnMatrixData(mtxInPlugMobj).matrix()
+        row0 = [mtxIn.getElement(0, idx) for idx in range(4)]
+        print(row0)
 
-        state = om2.MFnDependencyNode(self.thisMObject()).findPlug('nodeState', False).asInt()
-        if state == 1:
-            data.outputValue(Matrix2Vectors.mtxIn).setFloat(data.inputValue(Matrix2Vectors.row0).asFloat())
-            return
+        # state = om2.MFnDependencyNode(self.thisMObject()).findPlug('nodeState', False).asInt()
+        # if state == 1:
+        # if plug == Matrix2Vectors.mtxIn:
+        #     # data.outputValue(Matrix2Vectors.mtxIn).setFloat(data.inputValue(Matrix2Vectors.row0).asFloat())
+        #     mtx = om2.MMatrix(Matrix2Vectors.mtxIn)
+        #     row0 = [mtx.getElement(0, idx) for idx in range(4)]
+        #     print(row0)
+        #
 
-        if plug == Matrix2Vectors.mtxIn:
-            row0 = data.inputValue(Matrix2Vectors.row0).asFloat()
-            row1 = data.inputValue(Matrix2Vectors.row1).asFloat()
 
-            val_handle = data.outputValue(Matrix2Vectors.mtxIn)  # type: om.MDataHandle
-            print(val_handle)
-            # val_handle.setFloat(amp * math.sin(arg))
-            data.setClean(plug)
+
+
+        #     row0 = data.inputValue(Matrix2Vectors.row0).asFloat()
+        #     row1 = data.inputValue(Matrix2Vectors.row1).asFloat()
+        #
+        #     val_handle = data.outputValue(Matrix2Vectors.mtxIn)  # type: om.MDataHandle
+        #     print(val_handle)
+        #     # val_handle.setFloat(amp * math.sin(arg))
+        #     data.setClean(plug)
 
 
 
