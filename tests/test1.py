@@ -1,8 +1,15 @@
 import maya.api.OpenMaya as om2
 
-selList = om2.MGlobal.getActiveSelectionList()
-mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
+mtx = [
+    1, 2, 3, 4,
+    5, 6, 7, 8,
+    9, 10, 11, 12,
+    13, 14, 15, 16
+]
+mMtx = om2.MMatrix(mtx)
 
-for mObj in mObjs:
-    mFn = om2.MFnDependencyNode(mObj)
-    print(mFn.name())
+
+test = [0.0, 0.0, 0.1]
+
+if not sum(test) + 0.0:
+   print("YES")
