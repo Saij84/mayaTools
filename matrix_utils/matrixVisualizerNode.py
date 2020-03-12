@@ -69,7 +69,6 @@ class Matrix2Vectors(om2.MPxNode):
         row2 = [mtxIn.getElement(2, idx) for idx in range(4)]
         row3 = [mtxIn.getElement(3, idx) for idx in range(4)]
 
-
         for row in [row0, row1, row2, row3]:
             mtx = [
                 1, 0, 0, 0,
