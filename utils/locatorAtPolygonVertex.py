@@ -55,7 +55,7 @@ def createLocator(name, selType, mDagMod):
     :param mDagMod: MDagModifier
     :return: MObjectHandle
     """
-    locLocalScale = 0.1
+    locLocalScale = 0.2
     mDagPath = om2.MDagPath()
     loc = mDagMod.createNode("locator")
     newName = "LOC_{}_{}".format(selType, name)
@@ -148,64 +148,64 @@ def createLocAtFace(selList, mDagMod):
     while not iter.isDone():
         dag, mObj = selList.getComponent(0)
         idList = om2.MFnSingleIndexedComponent(mObj)
-        idElement = idList.getElements()
+        idElements = idList.getElements()
         polyIter = om2.MItMeshPolygon(dag, mObj)
         while not polyIter.isDone():
+            for id in idElements:
+                # Get polygon points
+                triMPointList, triVtxID = polyIter.getTriangle(0)
+                point1 = triMPointList[0]
+                point2 = triMPointList[1]
+                point3 = triMPointList[2]
+                polygonCenterMPoint = polyIter.center(om2.MSpace.kObject)
 
-            # Get polygon points
-            triMPointList, triVtxID = polyIter.getTriangle(0)
-            point1 = triMPointList[0]
-            point2 = triMPointList[1]
-            point3 = triMPointList[2]
-            polygonCenterMPoint = polyIter.center(om2.MSpace.kObject)
+                # Convert points to MVectors
+                p1Vector = om2.MVector(point1.x, point1.y, point1.z)
+                p2Vector = om2.MVector(point2.x, point2.y, point2.z)
+                p3Vector = om2.MVector(point3.x, point3.y, point3.z)
 
-            # Convert points to MVectors
-            p1Vector = om2.MVector(point1.x, point1.y, point1.z)
-            p2Vector = om2.MVector(point2.x, point2.y, point2.z)
-            p3Vector = om2.MVector(point3.x, point3.y, point3.z)
+                # Find Mid points to aim at
+                p1MidVector = p2Vector - p1Vector
+                p2MidVector = p3Vector - p1Vector
 
-            # Find Mid points to aim at
-            p1MidVector = p2Vector - p1Vector
-            p2MidVector = p3Vector - p1Vector
+                vector1 = point3 - point1
+                vector2 = point2 - point1
 
-            vector1 = point3 - point1
-            vector2 = point2 - point1
+                # Cross vectors NOTE: vectors2 is negative ti make X axis aiming "out"
+                normalVector = vector1 ^ -vector2
 
-            # Cross vectors NOTE: vectors2 is negative ti make X axsis aiming "out"
-            normalVector = vector1 ^ -vector2
+                mtx = (
+                    normalVector.x, normalVector.y, normalVector.z, 0,
+                    p2MidVector.x, p2MidVector.y, p2MidVector.z, 0,
+                    p1MidVector.x, p1MidVector.y, p1MidVector.z, 0,
+                    polygonCenterMPoint.x, polygonCenterMPoint.y, polygonCenterMPoint.z, polygonCenterMPoint.w
+                )
 
-            mtx = (
-                normalVector.x, normalVector.y, normalVector.z, 0,
-                p2MidVector.x, p2MidVector.y, p2MidVector.z, 0,
-                p1MidVector.x, p1MidVector.y, p1MidVector.z, 0,
-                polygonCenterMPoint.x, polygonCenterMPoint.y, polygonCenterMPoint.z, polygonCenterMPoint.w
-            )
+                compositMtx = om2.MMatrix(mtx) * offsetMtx
+                mTransMtx = om2.MTransformationMatrix(compositMtx)
+                trans = mTransMtx.translation(om2.MSpace.kWorld)
+                rot = mTransMtx.rotation()
 
-            compositMtx = om2.MMatrix(mtx) * offsetMtx
-            mTransMtx = om2.MTransformationMatrix(compositMtx)
-            trans = mTransMtx.translation(om2.MSpace.kWorld)
-            rot = mTransMtx.rotation()
+                # Set transform
+                locMObjHandle = createLocator(id, "f", mDagMod)
+                if locMObjHandle.isValid():
+                    locMObj = locMObjHandle.object()
+                    locMFn = om2.MFnDependencyNode(locMObj)
 
-            # Set transform
-            locMObjHandle = createLocator(idElement[0], "f", mDagMod)
-            if locMObjHandle.isValid():
-                locMObj = locMObjHandle.object()
-                locMFn = om2.MFnDependencyNode(locMObj)
+                    transX = locMFn.findPlug("translateX", False)
+                    transY = locMFn.findPlug("translateY", False)
+                    transZ = locMFn.findPlug("translateZ", False)
+                    transX.setFloat(trans.x)
+                    transY.setFloat(trans.y)
+                    transZ.setFloat(trans.z)
 
-                transX = locMFn.findPlug("translateX", False)
-                transY = locMFn.findPlug("translateY", False)
-                transZ = locMFn.findPlug("translateZ", False)
-                transX.setFloat(trans.x)
-                transY.setFloat(trans.y)
-                transZ.setFloat(trans.z)
-
-                rotX = locMFn.findPlug("rotateX", False)
-                rotY = locMFn.findPlug("rotateY", False)
-                rotZ = locMFn.findPlug("rotateZ", False)
-                rotX.setFloat(rot.x)
-                rotY.setFloat(rot.y)
-                rotZ.setFloat(rot.z)
-            polyIter.next(0)
+                    rotX = locMFn.findPlug("rotateX", False)
+                    rotY = locMFn.findPlug("rotateY", False)
+                    rotZ = locMFn.findPlug("rotateZ", False)
+                    rotX.setFloat(rot.x)
+                    rotY.setFloat(rot.y)
+                    rotZ.setFloat(rot.z)
+                polyIter.next()
         iter.next()
 
     print("Done! Face locator/s created and placed!")
@@ -215,10 +215,10 @@ selList = om2.MGlobal.getActiveSelectionList()
 componentIDs, typeID = geIDsAndTypes(selList)
 mDagMod = om2.MDagModifier()
 
-if typeID == 550:  # kMeshVertComponent
+if typeID == om2.MFn.kMeshVertComponent:
     for componentID in componentIDs:
         createLocAtVertex(selList, componentID, mDagMod)
-elif typeID == 548:  # kMeshPolygonComponent
+elif typeID == om2.MFn.kMeshPolygonComponent:
     createLocAtFace(selList, mDagMod)
 else:
     print("Please select an polygon")

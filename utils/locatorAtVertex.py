@@ -1,6 +1,6 @@
 """
 Author:Fangmin Chen
-Version: 0.1
+Version: 0.2
 
 This script will add an locator at a selected vertex aligned(not necessary same orientation) to its normals
 
@@ -55,7 +55,7 @@ def createLocator(name, selType, mDagMod):
     return locMObjHandle
 
 
-def createLocAtVertex(selList, componentID, mDagMod):
+def createLocAtVertex(selList, componentIDs, mDagMod):
     """
     Create an locator on vertex aligned with the vertex normal
     :param selList: MSelectionList
@@ -63,64 +63,64 @@ def createLocAtVertex(selList, componentID, mDagMod):
     :param mDagMod: MDagModifier
     :return: None
     """
-    # Get vertex normal/position
-    meshDagPath = selList.getDagPath(0)
-    mFnMesh = om2.MFnMesh(meshDagPath)
-    vtxNormal = mFnMesh.getVertexNormal(componentID, False, om2.MSpace.kObject)
-    vtxPoint = mFnMesh.getPoint(componentID, om2.MSpace.kObject)
+    for componentID in componentIDs:
+        # Get vertex normal/position
+        meshDagPath = selList.getDagPath(0)
+        mFnMesh = om2.MFnMesh(meshDagPath)
+        vtxNormal = mFnMesh.getVertexNormal(componentID, False, om2.MSpace.kObject)
+        vtxPoint = mFnMesh.getPoint(componentID, om2.MSpace.kObject)
 
-    mObj = selList.getDependNode(0)
-    mFn = om2.MFnDependencyNode(mObj)
-    getMtxPlug = mFn.findPlug("worldMatrix", False)
+        mObj = selList.getDependNode(0)
+        mFn = om2.MFnDependencyNode(mObj)
+        getMtxPlug = mFn.findPlug("worldMatrix", False)
 
-    mtxPlug = getMtxPlug.elementByLogicalIndex(0)
-    plugMObj = mtxPlug.asMObject()
+        mtxPlug = getMtxPlug.elementByLogicalIndex(0)
+        plugMObj = mtxPlug.asMObject()
 
-    mFnMtxData = om2.MFnMatrixData(plugMObj)
-    offsetMtx = mFnMtxData.matrix()
+        mFnMtxData = om2.MFnMatrixData(plugMObj)
+        offsetMtx = mFnMtxData.matrix()
 
-    # Construct a matrix
-    mtxConstruct = (
-        vtxNormal.x, vtxNormal.y, vtxNormal.z, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        vtxPoint.x, vtxPoint.y, vtxPoint.z, vtxPoint.w
-    )
+        # Construct a matrix
+        mtxConstruct = (
+            vtxNormal.x, vtxNormal.y, vtxNormal.z, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            vtxPoint.x, vtxPoint.y, vtxPoint.z, vtxPoint.w
+        )
 
-    vtxMMatrix = om2.MMatrix(mtxConstruct) * offsetMtx  # Convert to Maya MMatrix
-    vtxMtransMtx = om2.MTransformationMatrix(vtxMMatrix)
+        vtxMMatrix = om2.MMatrix(mtxConstruct) * offsetMtx  # Convert to Maya MMatrix
+        vtxMtransMtx = om2.MTransformationMatrix(vtxMMatrix)
 
-    # Get rotation/translation
-    rot = vtxMtransMtx.rotation()
-    trans = vtxMtransMtx.translation(om2.MSpace.kWorld)
+        # Get rotation/translation
+        rot = vtxMtransMtx.rotation()
+        trans = vtxMtransMtx.translation(om2.MSpace.kWorld)
 
-    loc = createLocator(componentID, "vtx", mDagMod)
-    if loc.isValid():
-        locMObj = loc.object()
-        mFn = om2.MFnDependencyNode(locMObj)
+        loc = createLocator(componentID, "vtx", mDagMod)
+        if loc.isValid():
+            locMObj = loc.object()
+            mFn = om2.MFnDependencyNode(locMObj)
 
-        transX = mFn.findPlug("translateX", False)
-        transY = mFn.findPlug("translateY", False)
-        transZ = mFn.findPlug("translateZ", False)
-        transX.setFloat(trans.x)
-        transY.setFloat(trans.y)
-        transZ.setFloat(trans.z)
+            transX = mFn.findPlug("translateX", False)
+            transY = mFn.findPlug("translateY", False)
+            transZ = mFn.findPlug("translateZ", False)
+            transX.setFloat(trans.x)
+            transY.setFloat(trans.y)
+            transZ.setFloat(trans.z)
 
-        rotX = mFn.findPlug("rotateX", False)
-        rotY = mFn.findPlug("rotateY", False)
-        rotZ = mFn.findPlug("rotateZ", False)
-        rotX.setFloat(rot.x)
-        rotY.setFloat(rot.y)
-        rotZ.setFloat(rot.z)
+            rotX = mFn.findPlug("rotateX", False)
+            rotY = mFn.findPlug("rotateY", False)
+            rotZ = mFn.findPlug("rotateZ", False)
+            rotX.setFloat(rot.x)
+            rotY.setFloat(rot.y)
+            rotZ.setFloat(rot.z)
 
 
 selList = om2.MGlobal.getActiveSelectionList()
 componentIDs, typeID = geIDsAndTypes(selList)
 mDagMod = om2.MDagModifier()
 
-if typeID == 550:  # kMeshVertComponent
-    for componentID in componentIDs:
-        createLocAtVertex(selList, componentID, mDagMod)
+if typeID == om2.MFn.kMeshVertComponent:
+    createLocAtVertex(selList, componentIDs, mDagMod)
     print("Done! Vertex locator/s created and placed!")
 else:
     print("Please select a vertex")
