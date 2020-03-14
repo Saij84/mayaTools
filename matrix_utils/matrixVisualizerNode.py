@@ -7,7 +7,7 @@ def maya_useNewAPI():
 
 class Matrix2Vectors(om2.MPxNode):
     nodeName = 'matrixVisualizer'
-    nodeID = om2.MTypeId(0x83129)
+    nodeID = om2.MTypeId(0x83129)  # 0x00134b82
     mtxIn = om2.MObject()
     row0 = om2.MObject()
     row1 = om2.MObject()
