@@ -20,21 +20,32 @@ def getSelectedCvID(shapeCVList):
             cvIdList.append(int(rangeString))
     return cvIdList
 
+def createCurveShape(crvName, pointVectors, closed=False):
+    """
+    Creates a curve with a given name
+    :param crvName: string
+    :param pointVectors: list of tuples
+    :param closed: bool
+    :return: None
+    """
+    # Add start point vector to the end of pointVector list to close the curve
+    if closed:
+        startPointVector = pointVectors[0]
+        pointVectors.append(startPointVector)
+
+    curve = cmds.curve(p=pointVectors, d=1, n=crvName)
+
+    for shape in cmds.listRelatives(curve, s=True, f=True):
+        cmds.rename(shape, "{}Shape".format(crvName))
+
 reComp = re.compile("\[(.*?)\]")
 shapeCVList = cmds.ls(sl=True)
 cvIDList = getSelectedCvID(shapeCVList)
-
-mDagMod = om2.MDagModifier()
 selList = om2.MGlobal.getActiveSelectionList()
-
-mObj = selList.getDependNode(0)
-mFn = om2.MFnDependencyNode(mObj)
-objName = mFn.name()
 
 dagPath = selList.getDagPath(0)
 shape = dagPath.extendToShape()
 shapeMObj = shape.node()
-
 shapeMFn = om2.MFnDependencyNode(shapeMObj)
 shapeCtrlPoints = shapeMFn.findPlug("controlPoints", False)
 
@@ -44,7 +55,6 @@ for idx in cvIDList:
     shapePointValX = shapeElement.child(0).asFloat()
     shapePointValY = shapeElement.child(1).asFloat()
     shapePointValZ = shapeElement.child(2).asFloat()
-
     crvVectors.append((shapePointValX, shapePointValY, shapePointValZ))
 
-print(crvVectors)
+createCurveShape("test", crvVectors, closed=False)
