@@ -3,9 +3,9 @@ import json
 import math
 import maya.api.OpenMaya as om2
 
-USERHOMEPATH = r"C:\Users\saij\Documents\maya\mayaCtrlJsons"
+USERHOMEPATH = r"C:\mayaCtrlJsons"
 FILENAME = "ctrlRotPos_001.json"
-JSONDATA = {'ctrlList': {}}
+jsonDataDict = {"savedCtrls": {}}
 
 def getTransRot(mObjectHandle):
     """
@@ -48,7 +48,7 @@ def data2Json(ctrlName, transRotData):
     """
     translateData, rotateData = transRotData
 
-    JSONDATA['ctrlList'].update(
+    jsonDataDict["savedCtrls"].update(
         {
             ctrlName: {
                 'translateX': translateData[0],
@@ -61,28 +61,37 @@ def data2Json(ctrlName, transRotData):
         }
     )
 
-    return JSONDATA
+    return jsonDataDict
+
+
+def constructNiceName(fullPathName):
+    splitNameList = fullPathName.split("|")
+    objectName = splitNameList[-1]
+
+    if ":" in objectName:
+        nameNoNamespace = "*:{}".format(objectName.split(":")[-1])
+        splitNameList[-1] = nameNoNamespace
+
+    niceName = ("|".join(splitNameList))
+
+    return niceName
 
 
 selList = om2.MGlobal.getActiveSelectionList()
 mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 
 for mObj in mObjs:
-    dagPath = om2.MDagPath()
-    pathName = dagPath.getAPathTo(mObj).fullPathName()
-    mObjHandle = om2.MObjectHandle(mObj)
-    mFn = om2.MFnDependencyNode(mObj)
-    mObjName = mFn.name()
     if mObj.apiType() == om2.MFn.kTransform:
-        if mFn.namespace:
-            mObjName = mObjName.split(":")[1]
+        mObjHandle = om2.MObjectHandle(mObj)
+        dagPath = om2.MDagPath()
+        pathName = dagPath.getAPathTo(mObj).fullPathName()
+        niceName = constructNiceName(pathName)
 
         transRotdata = getTransRot(mObjHandle)
-        jsonData = data2Json(mObjName, transRotdata)
-        print(pathName)
-        print(os.path.join(USERHOMEPATH, FILENAME))
-        # if os.path.isdir(USERHOMEPATH):
-        #     toFile(jsonData)
-        # else:
-        #     os.makedirs(USERHOMEPATH)
-        #     toFile(jsonData)
+        jsonDataDict = data2Json(niceName, transRotdata)
+
+        if os.path.isdir(USERHOMEPATH):
+            toFile(jsonDataDict)
+        else:
+            os.makedirs(USERHOMEPATH)
+            toFile(jsonDataDict)
