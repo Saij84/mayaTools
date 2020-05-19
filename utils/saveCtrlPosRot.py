@@ -8,6 +8,11 @@ FILENAME = "ctrlRotPos_001.json"
 JSONDATA = {'ctrlList': {}}
 
 def getTransRot(mObjectHandle):
+    """
+    Get translation and rotation of passed in MObjectHandle
+    :param mObjectHandle: MObjectHandle
+    :return: tuples ((tx, ty, tz), (rx, ry, rz))
+    """
     if mObjectHandle.isValid():
         mObj = mObjectHandle.object()
         mFn = om2.MFnDependencyNode(mObj)
@@ -36,20 +41,26 @@ def toFile(jsonDataDump):
 
 def data2Json(ctrlName, transRotData):
     """
-    Takes a root path, traverse the folder tree and store the data in json form
-    :param inPath: path i.e. 'c:\\Foo'
-    :return: dict
+    Organizes data to be exported
+    :param ctrlName: str, fullDagPath with no namespace
+    :param transRotData: tuple, ((tx, ty, tz), (rx, ry, rz))
+    :return: json
     """
-    translateData = transRotData[0]
-    rotateData = transRotData[1]
+    translateData, rotateData = transRotData
 
-    JSONDATA['ctrlList'].update({ctrlName: {
-        'translateX': translateData[0],
-        'translateY': translateData[1],
-        'translateZ': translateData[2],
-        'rotateX': rotateData[0],
-        'rotateY': rotateData[1],
-        'rotateZ': rotateData[2]}})
+    JSONDATA['ctrlList'].update(
+        {
+            ctrlName: {
+                'translateX': translateData[0],
+                'translateY': translateData[1],
+                'translateZ': translateData[2],
+                'rotateX': rotateData[0],
+                'rotateY': rotateData[1],
+                'rotateZ': rotateData[2]
+            }
+        }
+    )
+
     return JSONDATA
 
 
