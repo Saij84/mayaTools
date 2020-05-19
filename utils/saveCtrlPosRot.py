@@ -1,6 +1,11 @@
 import os
 import json
+import math
 import maya.api.OpenMaya as om2
+
+USERHOMEPATH = r"C:\Users\saij\Documents\maya\mayaCtrlJsons"
+FILENAME = "ctrlRotPos_001.json"
+JSONDATA = {'ctrlList': {}}
 
 def getTransRot(mObjectHandle):
     if mObjectHandle.isValid():
@@ -15,13 +20,45 @@ def getTransRot(mObjectHandle):
         mTransMtx = om2.MTransformationMatrix(mFnMtxData.matrix())
         trans = mTransMtx.translation(om2.MSpace.kWorld)
         rot = mTransMtx.rotation(asQuaternion=False)
+        rotDegree = (math.degrees(rot[0]), math.degrees(rot[1]), math.degrees(rot[2]))
+        return (trans, rotDegree)
 
-        return((trans, rot))
+
+def toFile(jsonDataDump):
+    """
+    Write to json file
+    :param jsonDataDump: jason data
+    :return: None
+    """
+    with open(os.path.join(USERHOMEPATH, FILENAME), "w") as jDump2File:
+        json.dump(jsonDataDump, jDump2File)
+
+
+def data2Json(ctrlName, transRotData):
+    """
+    Takes a root path, traverse the folder tree and store the data in json form
+    :param inPath: path i.e. 'c:\\Foo'
+    :return: dict
+    """
+    translateData = transRotData[0]
+    rotateData = transRotData[1]
+
+    JSONDATA['ctrlList'].update({ctrlName: {
+        'translateX': translateData[0],
+        'translateY': translateData[1],
+        'translateZ': translateData[2],
+        'rotateX': rotateData[0],
+        'rotateY': rotateData[1],
+        'rotateZ': rotateData[2]}})
+    return JSONDATA
+
 
 selList = om2.MGlobal.getActiveSelectionList()
 mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 
 for mObj in mObjs:
+    dagPath = om2.MDagPath()
+    pathName = dagPath.getAPathTo(mObj).fullPathName()
     mObjHandle = om2.MObjectHandle(mObj)
     mFn = om2.MFnDependencyNode(mObj)
     mObjName = mFn.name()
@@ -29,5 +66,12 @@ for mObj in mObjs:
         if mFn.namespace:
             mObjName = mObjName.split(":")[1]
 
-        print(getTransRot(mObjHandle))
-
+        transRotdata = getTransRot(mObjHandle)
+        jsonData = data2Json(mObjName, transRotdata)
+        print(pathName)
+        print(os.path.join(USERHOMEPATH, FILENAME))
+        # if os.path.isdir(USERHOMEPATH):
+        #     toFile(jsonData)
+        # else:
+        #     os.makedirs(USERHOMEPATH)
+        #     toFile(jsonData)
