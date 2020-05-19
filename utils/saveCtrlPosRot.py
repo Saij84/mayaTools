@@ -7,6 +7,7 @@ USERHOMEPATH = r"C:\mayaCtrlJsons"
 FILENAME = "ctrlRotPos_001.json"
 jsonDataDict = {"savedCtrls": {}}
 
+
 def getTransRot(mObjectHandle):
     """
     Get translation and rotation of passed in MObjectHandle
