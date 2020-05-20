@@ -1,71 +1,21 @@
 import os
 import json
-import math
+import re
 import maya.api.OpenMaya as om2
 
-USERHOMEPATH = r"C:\mayaCtrlJsons"
-FILENAME = "ctrlRotPos_001.json"
-jsonDataDict = {"savedCtrls": {}}
+FINDDIGITS = re.compile(r"\d+")
+USERHOMEPATH = r"c:\mayaCtrlJsons"
 
-
-def getTransRot(mObjectHandle):
-    """
-    Get translation and rotation of passed in MObjectHandle
-    :param mObjectHandle: MObjectHandle
-    :return: tuples ((tx, ty, tz), (rx, ry, rz))
-    """
-    if mObjectHandle.isValid():
-        mObj = mObjectHandle.object()
-        mFn = om2.MFnDependencyNode(mObj)
-        getMtxPlug = mFn.findPlug("worldMatrix", False)
-
-        mtxPlug = getMtxPlug.elementByLogicalIndex(0)
-        plugMObj = mtxPlug.asMObject()
-        mFnMtxData = om2.MFnMatrixData(plugMObj)
-
-        mTransMtx = om2.MTransformationMatrix(mFnMtxData.matrix())
-        trans = mTransMtx.translation(om2.MSpace.kWorld)
-        rot = mTransMtx.rotation(asQuaternion=False)
-        rotDegree = (math.degrees(rot[0]), math.degrees(rot[1]), math.degrees(rot[2]))
-        return (trans, rotDegree)
-
-
-def toFile(jsonDataDump):
-    """
-    Write to json file
-    :param jsonDataDump: jason data
-    :return: None
-    """
-    with open(os.path.join(USERHOMEPATH, FILENAME), "w") as jDump2File:
-        json.dump(jsonDataDump, jDump2File)
-
-
-def data2Json(ctrlName, transRotData):
-    """
-    Organizes data to be exported
-    :param ctrlName: str, fullDagPath with no namespace
-    :param transRotData: tuple, ((tx, ty, tz), (rx, ry, rz))
-    :return: json
-    """
-    translateData, rotateData = transRotData
-
-    jsonDataDict["savedCtrls"].update(
-        {
-            ctrlName: {
-                'translateX': translateData[0],
-                'translateY': translateData[1],
-                'translateZ': translateData[2],
-                'rotateX': rotateData[0],
-                'rotateY': rotateData[1],
-                'rotateZ': rotateData[2]
-            }
-        }
-    )
-
-    return jsonDataDict
+filename = "ctrlRotPos_001.json"
+jsonDataDict = {"savedCtrls": []}
 
 
 def constructNiceName(fullPathName):
+    """
+    Makes sure that namespaces are switched out for a wildcard sign
+    :param fullPathName: str
+    :return: str
+    """
     splitNameList = fullPathName.split("|")
     objectName = splitNameList[-1]
 
@@ -76,6 +26,83 @@ def constructNiceName(fullPathName):
     niceName = ("|".join(splitNameList))
 
     return niceName
+
+def constructNewFilename(filename):
+    """
+    Create a new name based on the largest version number in USERHOMEPATH
+    :param filename: str
+    :return: str
+    """
+    listFiles = os.listdir(USERHOMEPATH)
+    baseName = filename.split("_")[0]
+
+    versionList = list()
+    for file in listFiles:
+        digit = FINDDIGITS.findall(file)
+        intDigit = int(digit[0])
+        versionList.append(intDigit)
+
+    maxVersionNumber = max(versionList)
+    nextVersion = maxVersionNumber + 1
+
+    newName = "{baseName}_{0:0=3d}.json".format(nextVersion, baseName=baseName)
+    return newName
+
+def getMatrix(mObjectHandle, matrixPlug="worldMatrix"):
+    """
+    Get world matrix
+    :param mObjectHandle: MObjectHandle
+    :return: matrix
+    """
+    if mObjectHandle.isValid():
+        mObj = mObjectHandle.object()
+        mFn = om2.MFnDependencyNode(mObj)
+        mtxPlug = mFn.findPlug(matrixPlug, False)
+
+        if mtxPlug.isArray:
+            mtxPlug = mtxPlug.elementByLogicalIndex(0)
+
+        plugMObj = mtxPlug.asMObject()
+        mFnMtxData = om2.MFnMatrixData(plugMObj)
+        mtx = mFnMtxData.matrix()
+
+        return mtx
+
+
+def toFile(jsonDataDump, filename):
+    """
+    Write to json file
+    :param jsonDataDump: jason data
+    :return: None
+    """
+    with open(os.path.join(USERHOMEPATH, filename), "w") as jDump2File:
+        json.dump(jsonDataDump, jDump2File)
+
+def folderCleanup(USERHOMEPATH):
+    numbOfFiles = len(os.listdir(USERHOMEPATH))
+    sortedFileList = sorted(os.listdir(USERHOMEPATH))
+
+    if numbOfFiles >= 10:
+        firstFile = sortedFileList[0]
+        os.remove(os.path.join(USERHOMEPATH, firstFile))
+
+def organizeData(ctrlName, matrix):
+    """
+    Organizes data ready to be exported to json file
+    :param ctrlName: str, fullDagPath with namespace replaced with wildcard sign
+    :param matrix
+    :return: json
+    """
+    matrixForSerialization = tuple(matrix)
+    jsonDataDict["savedCtrls"].append(
+        {
+            ctrlName: {
+                "matrix": matrixForSerialization
+            }
+        }
+    )
+
+    return jsonDataDict
 
 
 selList = om2.MGlobal.getActiveSelectionList()
@@ -88,11 +115,16 @@ for mObj in mObjs:
         pathName = dagPath.getAPathTo(mObj).fullPathName()
         niceName = constructNiceName(pathName)
 
-        transRotdata = getTransRot(mObjHandle)
-        jsonDataDict = data2Json(niceName, transRotdata)
+        mtx = getMatrix(mObjHandle)
+        jsonDataDict = organizeData(niceName, mtx)
 
-        if os.path.isdir(USERHOMEPATH):
-            toFile(jsonDataDict)
-        else:
-            os.makedirs(USERHOMEPATH)
-            toFile(jsonDataDict)
+if os.path.isdir(USERHOMEPATH):
+    newFileName = filename
+    if os.path.exists(os.path.join(USERHOMEPATH, filename)):
+        newFileName = constructNewFilename(filename)
+
+    toFile(jsonDataDict, newFileName)
+
+else:
+    os.makedirs(USERHOMEPATH)
+    toFile(jsonDataDict, filename)
