@@ -6,11 +6,12 @@ import maya.api.OpenMaya as om2
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
 
-filename = "ctrlRotPos_001.json"
-jsonDataDict = {"savedCtrls": []}
+baseName = "ctrlRotPos"
+fileVersion = 1
+fileList = sorted(os.listdir(USERHOMEPATH))
 
 
-def constructNiceName(fullPathName):
+def constructNiceMayaName(fullPathName):
     """
     Makes sure that namespaces are switched out for a wildcard sign
     :param fullPathName: str
@@ -27,26 +28,22 @@ def constructNiceName(fullPathName):
 
     return niceName
 
-def constructNewFilename(filename):
+
+def constructNewFilename(baseName):
     """
     Create a new name based on the largest version number in USERHOMEPATH
     :param filename: str
     :return: str
     """
-    listFiles = os.listdir(USERHOMEPATH)
-    baseName = filename.split("_")[0]
-
-    versionList = list()
-    for file in listFiles:
+    digitList = list()
+    for file in fileList:
         digit = FINDDIGITS.findall(file)
-        intDigit = int(digit[0])
-        versionList.append(intDigit)
-
-    maxVersionNumber = max(versionList)
-    nextVersion = maxVersionNumber + 1
-
+        digitList.append(int(digit[0]))
+    maxVersion = max(digitList)
+    nextVersion = maxVersion + 1
     newName = "{baseName}_{0:0=3d}.json".format(nextVersion, baseName=baseName)
     return newName
+
 
 def getMatrix(mObjectHandle, matrixPlug="worldMatrix"):
     """
@@ -78,15 +75,14 @@ def toFile(jsonDataDump, filename):
     with open(os.path.join(USERHOMEPATH, filename), "w") as jDump2File:
         json.dump(jsonDataDump, jDump2File)
 
-def folderCleanup(USERHOMEPATH):
-    numbOfFiles = len(os.listdir(USERHOMEPATH))
-    sortedFileList = sorted(os.listdir(USERHOMEPATH))
 
-    if numbOfFiles >= 10:
-        firstFile = sortedFileList[0]
+def folderCleanup(fileList):
+    if len(fileList) >= 6:
+        firstFile = fileList[0]
         os.remove(os.path.join(USERHOMEPATH, firstFile))
 
-def organizeData(ctrlName, matrix):
+
+def organizeData(jsonDataDict, ctrlName, matrix):
     """
     Organizes data ready to be exported to json file
     :param ctrlName: str, fullDagPath with namespace replaced with wildcard sign
@@ -105,26 +101,42 @@ def organizeData(ctrlName, matrix):
     return jsonDataDict
 
 
-selList = om2.MGlobal.getActiveSelectionList()
-mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
+def saveCtrlMtx():
+    """
+    Save all selected ctrl's world matrix
+    """
+    selList = om2.MGlobal.getActiveSelectionList()
+    mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
+    newFileName = "{}_{}.json".format(baseName, "001")
+    jsonDataDict = {"savedCtrls": []}
 
-for mObj in mObjs:
-    if mObj.apiType() == om2.MFn.kTransform:
-        mObjHandle = om2.MObjectHandle(mObj)
-        dagPath = om2.MDagPath()
-        pathName = dagPath.getAPathTo(mObj).fullPathName()
-        niceName = constructNiceName(pathName)
+    for mObj in mObjs:
+        if mObj.apiType() == om2.MFn.kTransform:
+            mObjHandle = om2.MObjectHandle(mObj)
+            dagPath = om2.MDagPath()
+            pathName = dagPath.getAPathTo(mObj).fullPathName()
+            niceName = constructNiceMayaName(pathName)
 
-        mtx = getMatrix(mObjHandle)
-        jsonDataDict = organizeData(niceName, mtx)
+            mtx = getMatrix(mObjHandle)
+            jsonDataDict = organizeData(jsonDataDict, niceName, mtx)
 
-if os.path.isdir(USERHOMEPATH):
-    newFileName = filename
-    if os.path.exists(os.path.join(USERHOMEPATH, filename)):
-        newFileName = constructNewFilename(filename)
+    if os.path.isdir(USERHOMEPATH):
+        if len(fileList) > 0:
+            newFileName = constructNewFilename(baseName)
 
-    toFile(jsonDataDict, newFileName)
+        toFile(jsonDataDict, newFileName)
+        folderCleanup(fileList)
+    else:
+        os.makedirs(USERHOMEPATH)
+        toFile(jsonDataDict, newFileName)
 
-else:
-    os.makedirs(USERHOMEPATH)
-    toFile(jsonDataDict, filename)
+
+def loadCtrlMtx():
+    """
+    load ctrl mtx
+    if: there is a selection the script will try to load the value on the specific ctrl
+    else: try to load everything from file
+    """
+    pass
+
+saveCtrlMtx()
