@@ -1,8 +1,8 @@
 import os
-import json
 import re
+import json
 import maya.api.OpenMaya as om2
-
+import maya.cmds as cmds
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
 
@@ -75,6 +75,11 @@ def toFile(jsonDataDump, filename):
     with open(os.path.join(USERHOMEPATH, filename), "w") as jDump2File:
         json.dump(jsonDataDump, jDump2File)
 
+def fromFile(filename):
+    with open(os.path.join(USERHOMEPATH, filename), "r") as jsonFile:
+        jsonData = json.load(jsonFile)
+        return jsonData
+
 
 def folderCleanup(fileList):
     if len(fileList) >= 6:
@@ -92,9 +97,7 @@ def organizeData(jsonDataDict, ctrlName, matrix):
     matrixForSerialization = tuple(matrix)
     jsonDataDict["savedCtrls"].append(
         {
-            ctrlName: {
-                "matrix": matrixForSerialization
-            }
+            ctrlName: matrixForSerialization
         }
     )
 
@@ -137,6 +140,38 @@ def loadCtrlMtx():
     if: there is a selection the script will try to load the value on the specific ctrl
     else: try to load everything from file
     """
-    pass
+    mDagMod = om2.MDagModifier()
+    transformMObj = mDagMod.createNode("transform")
 
-saveCtrlMtx()
+    jsonData = fromFile("{}_003.json".format(baseName))
+    for i in jsonData["savedCtrls"]:
+        for key, value in i.items():
+            mMtx = om2.MMatrix(value)
+            selList = om2.MSelectionList()
+            selList.add(key)
+            mObj = selList.getDependNode(0)
+            mObjHandle = om2.MObjectHandle(mObj)
+            mFn = om2.MFnDependencyNode(transformMObj)
+
+            mTransMtx = om2.MTransformationMatrix(mMtx)
+            trans = mTransMtx.translation(om2.MSpace.kWorld)
+            rot = mTransMtx.rotation()
+
+            transX = mFn.findPlug("translateX", False)
+            transY = mFn.findPlug("translateY", False)
+            transZ = mFn.findPlug("translateZ", False)
+            transX.setFloat(trans.x)
+            transY.setFloat(trans.y)
+            transZ.setFloat(trans.z)
+
+            rotX = mFn.findPlug("rotateX", False)
+            rotY = mFn.findPlug("rotateY", False)
+            rotZ = mFn.findPlug("rotateZ", False)
+            rotX.setFloat(rot.x)
+            rotY.setFloat(rot.y)
+            rotZ.setFloat(rot.z)
+    mDagMod.doIt()
+loadCtrlMtx()
+
+# saveCtrlMtx()
+
