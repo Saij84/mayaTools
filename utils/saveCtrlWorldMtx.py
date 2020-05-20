@@ -6,7 +6,7 @@ import maya.api.OpenMaya as om2
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
 
-baseName = "ctrlRotPos"
+baseName = "ctrlWorldMtx"
 fileVersion = 1
 fileList = sorted(os.listdir(USERHOMEPATH))
 
