@@ -115,6 +115,7 @@ def setAtters(mObjectHandle, mtx):
 
         trans = mTransMtx.translation(om2.MSpace.kWorld)
         rot = mTransMtx.rotation()
+        scl = mTransMtx.scale(om2.MSpace.kObject)
 
         transX = mFn.findPlug("translateX", False)
         transY = mFn.findPlug("translateY", False)
@@ -129,6 +130,13 @@ def setAtters(mObjectHandle, mtx):
         rotX.setFloat(rot.x)
         rotY.setFloat(rot.y)
         rotZ.setFloat(rot.z)
+
+        rotX = mFn.findPlug("scaleX", False)
+        rotY = mFn.findPlug("scaleY", False)
+        rotZ = mFn.findPlug("scaleZ", False)
+        rotX.setFloat(scl[0])
+        rotY.setFloat(scl[1])
+        rotZ.setFloat(scl[2])
 
 
 def saveCtrlMtx():
@@ -166,19 +174,32 @@ def loadCtrlMtx():
     mDagMod = om2.MDagModifier()
     jsonData = fromFile(filename)
     matchObject = mDagMod.createNode("transform")
-    matchObjectHandle = om2.MObjectHandle(matchObject)
     mDagMod.doIt()
 
     if not selList.length():
-        for key, value in jsonData.items():
-            selList = om2.MSelectionList()
-            selList.add(key)
+        for ctrlName, value in jsonData.items():
             mMtx = om2.MMatrix(value)
-            setAtters(matchObjectHandle, mMtx)
 
-            mDagPath = om2.MDagPath()
-            driverPath = mDagPath.getAPathTo(matchObject)
-            createConstraints(driverPath, key)
+            selList = om2.MSelectionList()
+            selList.add(ctrlName)
+            selList.add(matchObject)
+
+            driver = selList.getDependNode(1)
+            driverMObjHandle = om2.MObjectHandle(driver)
+            driven = selList.getDependNode(0)
+            drivenMObjHandle = om2.MObjectHandle(driven)
+            setAtters(driverMObjHandle, mMtx)
+
+            worldMtx = getMatrix(driverMObjHandle, "worldMatrix")
+            parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
+
+            newMtx = worldMtx * parentInverseMtx
+
+            setAtters(drivenMObjHandle, newMtx)
+
+            # mDagPath = om2.MDagPath()
+            # driverPath = mDagPath.getAPathTo(matchObject)
+            createConstraints(driverPath, ctrlName)
         print("Attrs loaded!")
     else:
         mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]

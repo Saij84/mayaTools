@@ -31,6 +31,7 @@ def setAtters(mObjectHandle, mtx):
 
         trans = mTransMtx.translation(om2.MSpace.kWorld)
         rot = mTransMtx.rotation()
+        scl = mTransMtx.scale(om2.MSpace.kObject)
 
         transX = mFn.findPlug("translateX", False)
         transY = mFn.findPlug("translateY", False)
@@ -46,15 +47,28 @@ def setAtters(mObjectHandle, mtx):
         rotY.setFloat(rot.y)
         rotZ.setFloat(rot.z)
 
+        rotX = mFn.findPlug("scaleX", False)
+        rotY = mFn.findPlug("scaleY", False)
+        rotZ = mFn.findPlug("scaleZ", False)
+        rotX.setFloat(scl[0])
+        rotY.setFloat(scl[1])
+        rotZ.setFloat(scl[2])
 
-def findPlug(mObjectHandle, findPlug):
+
+def findPlug(mObjectHandle, searchPlug):
     """
     Creates and names the created node
     :param mObjectHandle: MObjectHandle
     :param findPlug: str
     :return: MPlug
     """
-    pass
+    if mObjectHandle.isValid():
+        mObj = mObjectHandle.object()
+        mFn = om2.MFnDependencyNode(mObj)
+
+        mPlugs = mFn.findPlug(searchPlug, False)
+
+        return mPlugs
 
 
 selList = om2.MGlobal.getActiveSelectionList()
@@ -62,5 +76,18 @@ mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 mDagMod = om2.MDagModifier()
 
 for mObj in mObjs:
+    mObjHandle = om2.MObjectHandle(mObj)
     mFn = om2.MFnDependencyNode(mObj)
-    createNode("locator", "TEST", mDagMod)
+    locMObj = createNode("locator", "TEST", mDagMod)
+    locMObjHandle = om2.MObjectHandle(locMObj)
+
+    mPlug = findPlug(mObjHandle, "worldMatrix")
+    if mPlug.isArray:
+        mtxIdxZero = mPlug.elementByLogicalIndex(0)
+
+        plugMObj = mtxIdxZero.asMObject()
+        mFnMtxData = om2.MFnMatrixData(plugMObj)
+        mMtx = mFnMtxData.matrix()
+
+        setAtters(locMObjHandle, mMtx)
+
