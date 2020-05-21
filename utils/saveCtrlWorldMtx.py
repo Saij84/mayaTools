@@ -3,6 +3,7 @@ import re
 import json
 import maya.api.OpenMaya as om2
 import maya.cmds as cmds
+
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
 
@@ -11,17 +12,17 @@ fileVersion = 1
 fileList = sorted(os.listdir(USERHOMEPATH))
 
 
-def constructNiceMayaName(fullPathName):
+def constructNiceMayaName(pathName):
     """
     Makes sure that namespaces are switched out for a wildcard sign
-    :param fullPathName: str
+    :param pathName: str
     :return: str
     """
-    splitNameList = fullPathName.split("|")
+    splitNameList = pathName.split("|")
     objectName = splitNameList[-1]
 
     if ":" in objectName:
-        nameNoNamespace = "*:{}".format(objectName.split(":")[-1])
+        nameNoNamespace = objectName.split(":")[-1]
         splitNameList[-1] = nameNoNamespace
 
     niceName = ("|".join(splitNameList))
@@ -75,7 +76,10 @@ def toFile(jsonDataDump, filename):
     with open(os.path.join(USERHOMEPATH, filename), "w") as jDump2File:
         json.dump(jsonDataDump, jDump2File)
 
-def fromFile(filename):
+
+def fromFile():
+    filename = max(fileList)
+    print("Loading json file: {}".format(filename))
     with open(os.path.join(USERHOMEPATH, filename), "r") as jsonFile:
         jsonData = json.load(jsonFile)
         return jsonData
@@ -95,13 +99,33 @@ def organizeData(jsonDataDict, ctrlName, matrix):
     :return: json
     """
     matrixForSerialization = tuple(matrix)
-    jsonDataDict["savedCtrls"].append(
-        {
-            ctrlName: matrixForSerialization
-        }
-    )
+    jsonDataDict.update({ctrlName: matrixForSerialization})
 
     return jsonDataDict
+
+
+def setAtters(mObjectHandle, mtx):
+    if mObjectHandle.isValid():
+        mObj = mObjectHandle.object()
+        mFn = om2.MFnDependencyNode(mObj)
+        mTransMtx = om2.MTransformationMatrix(mtx)
+
+        trans = mTransMtx.translation(om2.MSpace.kWorld)
+        rot = mTransMtx.rotation()
+
+        transX = mFn.findPlug("translateX", False)
+        transY = mFn.findPlug("translateY", False)
+        transZ = mFn.findPlug("translateZ", False)
+        transX.setFloat(trans.x)
+        transY.setFloat(trans.y)
+        transZ.setFloat(trans.z)
+
+        rotX = mFn.findPlug("rotateX", False)
+        rotY = mFn.findPlug("rotateY", False)
+        rotZ = mFn.findPlug("rotateZ", False)
+        rotX.setFloat(rot.x)
+        rotY.setFloat(rot.y)
+        rotZ.setFloat(rot.z)
 
 
 def saveCtrlMtx():
@@ -111,13 +135,13 @@ def saveCtrlMtx():
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
     newFileName = "{}_{}.json".format(baseName, "001")
-    jsonDataDict = {"savedCtrls": []}
+    jsonDataDict = {}
 
     for mObj in mObjs:
         if mObj.apiType() == om2.MFn.kTransform:
             mObjHandle = om2.MObjectHandle(mObj)
             dagPath = om2.MDagPath()
-            pathName = dagPath.getAPathTo(mObj).fullPathName()
+            pathName = dagPath.getAPathTo(mObj).partialPathName()
             niceName = constructNiceMayaName(pathName)
 
             mtx = getMatrix(mObjHandle)
@@ -134,44 +158,54 @@ def saveCtrlMtx():
         toFile(jsonDataDict, newFileName)
 
 
+def createConstraints(driver, driven):
+    pConstraint = cmds.parentConstraint(driver, driven, maintainOffset=False)
+    cmds.delete(pConstraint)
+
+
 def loadCtrlMtx():
     """
     load ctrl mtx
     if: there is a selection the script will try to load the value on the specific ctrl
     else: try to load everything from file
     """
+    selList = om2.MGlobal.getActiveSelectionList()
     mDagMod = om2.MDagModifier()
-    transformMObj = mDagMod.createNode("transform")
-
-    jsonData = fromFile("{}_003.json".format(baseName))
-    for i in jsonData["savedCtrls"]:
-        for key, value in i.items():
-            mMtx = om2.MMatrix(value)
-            selList = om2.MSelectionList()
-            selList.add(key)
-            mObj = selList.getDependNode(0)
-            mObjHandle = om2.MObjectHandle(mObj)
-            mFn = om2.MFnDependencyNode(transformMObj)
-
-            mTransMtx = om2.MTransformationMatrix(mMtx)
-            trans = mTransMtx.translation(om2.MSpace.kWorld)
-            rot = mTransMtx.rotation()
-
-            transX = mFn.findPlug("translateX", False)
-            transY = mFn.findPlug("translateY", False)
-            transZ = mFn.findPlug("translateZ", False)
-            transX.setFloat(trans.x)
-            transY.setFloat(trans.y)
-            transZ.setFloat(trans.z)
-
-            rotX = mFn.findPlug("rotateX", False)
-            rotY = mFn.findPlug("rotateY", False)
-            rotZ = mFn.findPlug("rotateZ", False)
-            rotX.setFloat(rot.x)
-            rotY.setFloat(rot.y)
-            rotZ.setFloat(rot.z)
+    jsonData = fromFile()
+    matchObject = mDagMod.createNode("transform")
+    matchObjectHandle = om2.MObjectHandle(matchObject)
     mDagMod.doIt()
-loadCtrlMtx()
+
+    if not selList.length():
+        for key, value in jsonData.items():
+            fullName = "*:{}".format(key)
+            selList = om2.MSelectionList()
+            selList.add(fullName)
+            mMtx = om2.MMatrix(value)
+            setAtters(matchObjectHandle, mMtx)
+
+            mDagPath = om2.MDagPath()
+            driverPath = mDagPath.getAPathTo(matchObject)
+            createConstraints(driverPath, fullName)
+    else:
+        mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
+
+        for mobj in mObjs:
+            mFn = om2.MFnDependencyNode(mobj)
+            objName = mFn.name()
+
+            if mFn.namespace:
+                objName = objName.split(":")[-1]
+
+            if objName in jsonData:
+                mMtx = om2.MMatrix(jsonData.get(objName))
+                setAtters(matchObjectHandle, mMtx)
+                mDagPath = om2.MDagPath()
+                driverPath = mDagPath.getAPathTo(matchObject)
+                createConstraints(driverPath, "*:{}".format(objName))
+
+    mDagMod.deleteNode(matchObject)
+
 
 # saveCtrlMtx()
-
+loadCtrlMtx()
