@@ -56,6 +56,7 @@ def findPlug(mObjectHandle, findPlug):
     """
     pass
 
+
 selList = om2.MGlobal.getActiveSelectionList()
 mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 mDagMod = om2.MDagModifier()
