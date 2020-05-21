@@ -7,8 +7,7 @@ import maya.cmds as cmds
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
 
-baseName = "ctrlWorldMtx"
-fileVersion = 1
+filename = "ctrlWorldMtx_v001.json"
 fileList = sorted(os.listdir(USERHOMEPATH))
 
 
@@ -28,22 +27,6 @@ def constructNiceMayaName(pathName):
     niceName = ("|".join(splitNameList))
 
     return niceName
-
-
-def constructNewFilename(baseName):
-    """
-    Create a new name based on the largest version number in USERHOMEPATH
-    :param filename: str
-    :return: str
-    """
-    digitList = list()
-    for file in fileList:
-        digit = FINDDIGITS.findall(file)
-        digitList.append(int(digit[0]))
-    maxVersion = max(digitList)
-    nextVersion = maxVersion + 1
-    newName = "{baseName}_{0:0=3d}.json".format(nextVersion, baseName=baseName)
-    return newName
 
 
 def getMatrix(mObjectHandle, matrixPlug="worldMatrix"):
@@ -77,18 +60,15 @@ def toFile(jsonDataDump, filename):
         json.dump(jsonDataDump, jDump2File)
 
 
-def fromFile():
-    filename = max(fileList)
-    print("Loading json file: {}".format(filename))
+def fromFile(filename):
+    """
+    Read json file
+    :param filename: str
+    :return: json dictionary
+    """
     with open(os.path.join(USERHOMEPATH, filename), "r") as jsonFile:
         jsonData = json.load(jsonFile)
         return jsonData
-
-
-def folderCleanup(fileList):
-    if len(fileList) >= 6:
-        firstFile = fileList[0]
-        os.remove(os.path.join(USERHOMEPATH, firstFile))
 
 
 def organizeData(jsonDataDict, ctrlName, matrix):
@@ -104,7 +84,24 @@ def organizeData(jsonDataDict, ctrlName, matrix):
     return jsonDataDict
 
 
+def createConstraints(driver, driven):
+    """
+    Parent constrain given ctrls
+    :param driver: str, driver ctrl name
+    :param driven: str, driven ctrl name
+    :return: None
+    """
+    pConstraint = cmds.parentConstraint(driver, driven, maintainOffset=False)
+    cmds.delete(pConstraint)
+
+
 def setAtters(mObjectHandle, mtx):
+    """
+    Sets translation/rotation
+    :param mObjectHandle: MObjectHandle
+    :param mtx: MMatrix
+    :return: None
+    """
     if mObjectHandle.isValid():
         mObj = mObjectHandle.object()
         mFn = om2.MFnDependencyNode(mObj)
@@ -134,7 +131,6 @@ def saveCtrlMtx():
     """
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
-    newFileName = "{}_{}.json".format(baseName, "001")
     jsonDataDict = {}
 
     for mObj in mObjs:
@@ -148,19 +144,10 @@ def saveCtrlMtx():
             jsonDataDict = organizeData(jsonDataDict, niceName, mtx)
 
     if os.path.isdir(USERHOMEPATH):
-        if len(fileList) > 0:
-            newFileName = constructNewFilename(baseName)
-
-        toFile(jsonDataDict, newFileName)
-        folderCleanup(fileList)
+        toFile(jsonDataDict, filename)
     else:
         os.makedirs(USERHOMEPATH)
-        toFile(jsonDataDict, newFileName)
-
-
-def createConstraints(driver, driven):
-    pConstraint = cmds.parentConstraint(driver, driven, maintainOffset=False)
-    cmds.delete(pConstraint)
+        toFile(jsonDataDict, filename)
 
 
 def loadCtrlMtx():
@@ -171,7 +158,7 @@ def loadCtrlMtx():
     """
     selList = om2.MGlobal.getActiveSelectionList()
     mDagMod = om2.MDagModifier()
-    jsonData = fromFile()
+    jsonData = fromFile(filename)
     matchObject = mDagMod.createNode("transform")
     matchObjectHandle = om2.MObjectHandle(matchObject)
     mDagMod.doIt()
