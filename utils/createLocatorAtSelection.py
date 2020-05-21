@@ -78,7 +78,7 @@ mDagMod = om2.MDagModifier()
 for mObj in mObjs:
     mObjHandle = om2.MObjectHandle(mObj)
     mFn = om2.MFnDependencyNode(mObj)
-    locMObj = createNode("locator", "TEST", mDagMod)
+    locMObj = createNode("locator", "{}_LOC".format(mFn.name()), mDagMod)
     locMObjHandle = om2.MObjectHandle(locMObj)
 
     mPlug = findPlug(mObjHandle, "worldMatrix")
