@@ -91,8 +91,14 @@ def createConstraints(driver, driven):
     :param driven: str, driven ctrl name
     :return: None
     """
-    pConstraint = cmds.parentConstraint(driver, driven, maintainOffset=False)
-    cmds.delete(pConstraint)
+    try:
+        nsDriver = "*:{}".format(driver)
+        nsDriven = "*:{}".format(driven)
+        pConstraint = cmds.parentConstraint(nsDriver, nsDriven, maintainOffset=False)
+        cmds.delete(pConstraint)
+    except:
+        pConstraint = cmds.parentConstraint(driver, driven, maintainOffset=False)
+        cmds.delete(pConstraint)
 
 
 def setAtters(mObjectHandle, mtx):
@@ -165,18 +171,17 @@ def loadCtrlMtx():
 
     if not selList.length():
         for key, value in jsonData.items():
-            fullName = "*:{}".format(key)
             selList = om2.MSelectionList()
-            selList.add(fullName)
+            selList.add(key)
             mMtx = om2.MMatrix(value)
             setAtters(matchObjectHandle, mMtx)
 
             mDagPath = om2.MDagPath()
             driverPath = mDagPath.getAPathTo(matchObject)
-            createConstraints(driverPath, fullName)
+            createConstraints(driverPath, key)
+        print("Attrs loaded!")
     else:
         mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
-
         for mobj in mObjs:
             mFn = om2.MFnDependencyNode(mobj)
             objName = mFn.name()
@@ -189,7 +194,10 @@ def loadCtrlMtx():
                 setAtters(matchObjectHandle, mMtx)
                 mDagPath = om2.MDagPath()
                 driverPath = mDagPath.getAPathTo(matchObject)
-                createConstraints(driverPath, "*:{}".format(objName))
+                createConstraints(driverPath, objName)
+                print("Loaded attrs on: {}".format(objName))
+            else:
+                print("{} is not in the saved json dictionary!".format(objName))
 
     mDagMod.deleteNode(matchObject)
 
