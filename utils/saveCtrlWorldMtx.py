@@ -2,7 +2,7 @@ import os
 import re
 import json
 import maya.api.OpenMaya as om2
-import maya.cmds as cmds
+
 
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
@@ -84,23 +84,6 @@ def organizeData(jsonDataDict, ctrlName, matrix):
     return jsonDataDict
 
 
-def createConstraints(driver, driven):
-    """
-    Parent constrain given ctrls
-    :param driver: str, driver ctrl name
-    :param driven: str, driven ctrl name
-    :return: None
-    """
-    try:
-        nsDriver = "*:{}".format(driver)
-        nsDriven = "*:{}".format(driven)
-        pConstraint = cmds.parentConstraint(nsDriver, nsDriven, maintainOffset=False)
-        cmds.delete(pConstraint)
-    except:
-        pConstraint = cmds.parentConstraint(driver, driven, maintainOffset=False)
-        cmds.delete(pConstraint)
-
-
 def setAtters(mObjectHandle, mtx):
     """
     Sets translation/rotation
@@ -171,35 +154,24 @@ def loadCtrlMtx():
     else: try to load everything from file
     """
     selList = om2.MGlobal.getActiveSelectionList()
-    mDagMod = om2.MDagModifier()
     jsonData = fromFile(filename)
-    matchObject = mDagMod.createNode("transform")
-    mDagMod.doIt()
 
     if not selList.length():
         for ctrlName, value in jsonData.items():
             mMtx = om2.MMatrix(value)
-
             selList = om2.MSelectionList()
-            selList.add(ctrlName)
-            selList.add(matchObject)
+            try:
+                selList.add("*:{}".format(ctrlName))
+            except:
+                selList.add(ctrlName)
 
-            driver = selList.getDependNode(1)
-            driverMObjHandle = om2.MObjectHandle(driver)
             driven = selList.getDependNode(0)
             drivenMObjHandle = om2.MObjectHandle(driven)
-            setAtters(driverMObjHandle, mMtx)
 
-            worldMtx = getMatrix(driverMObjHandle, "worldMatrix")
             parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
-
-            newMtx = worldMtx * parentInverseMtx
+            newMtx = mMtx * parentInverseMtx
 
             setAtters(drivenMObjHandle, newMtx)
-
-            # mDagPath = om2.MDagPath()
-            # driverPath = mDagPath.getAPathTo(matchObject)
-            createConstraints(driverPath, ctrlName)
         print("Attrs loaded!")
     else:
         mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
@@ -212,15 +184,15 @@ def loadCtrlMtx():
 
             if objName in jsonData:
                 mMtx = om2.MMatrix(jsonData.get(objName))
-                setAtters(matchObjectHandle, mMtx)
-                mDagPath = om2.MDagPath()
-                driverPath = mDagPath.getAPathTo(matchObject)
-                createConstraints(driverPath, objName)
+                drivenMObjHandle = om2.MObjectHandle(mobj)
+                parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
+                mMtx = mMtx * parentInverseMtx
+
+                setAtters(drivenMObjHandle, mMtx)
+
                 print("Loaded attrs on: {}".format(objName))
             else:
                 print("{} is not in the saved json dictionary!".format(objName))
-
-    mDagMod.deleteNode(matchObject)
 
 
 # saveCtrlMtx()
