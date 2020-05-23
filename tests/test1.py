@@ -1,15 +1,13 @@
 import maya.api.OpenMaya as om2
 
-mtx = [
-    1, 2, 3, 4,
-    5, 6, 7, 8,
-    9, 10, 11, 12,
-    13, 14, 15, 16
-]
-mMtx = om2.MMatrix(mtx)
+selList = om2.MGlobal.getActiveSelectionList()
+mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 
+def findParent(mObjHandle):
+    if mObjHandle.isValid():
+        mObj = mObjHandle.object()
+        mFnDag = om2.MFnDagNode(mObj)
+        parentmObj = mFnDag.parent(0)
+        mFn = om2.MFnDependencyNode(parentmObj)
 
-test = [0.0, 0.0, 0.1]
-
-if not sum(test) + 0.0:
-   print("YES")
+        return mFn.name()

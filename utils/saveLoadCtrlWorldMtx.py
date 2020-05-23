@@ -8,7 +8,7 @@ USAGE save: Select Ctrl/s run save method to save
 USAGE load: run load method to try load all ctrls or select specific ctrl/s to load value on selected ctrl/s
 
 NOTE: Currently ctrls needs to be uniquely named, is on my toDo list
-NOTE: If root node is negX then the script will not loaded correctly another item for toDo list
+NOTE: loading a negative XYZ value on selected object, will not work correctly. another item for my toDo list
 """
 
 import os
@@ -19,7 +19,6 @@ import maya.api.OpenMaya as om2
 
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
-
 filename = "ctrlWorldMtx_v001.json"
 fileList = sorted(os.listdir(USERHOMEPATH))
 
