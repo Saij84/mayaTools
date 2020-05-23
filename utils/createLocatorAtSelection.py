@@ -70,24 +70,24 @@ def findPlug(mObjectHandle, searchPlug):
 
         return mPlugs
 
+def createLocAtSelection():
+    selList = om2.MGlobal.getActiveSelectionList()
+    mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
+    mDagMod = om2.MDagModifier()
 
-selList = om2.MGlobal.getActiveSelectionList()
-mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
-mDagMod = om2.MDagModifier()
+    for mObj in mObjs:
+        mObjHandle = om2.MObjectHandle(mObj)
+        mFn = om2.MFnDependencyNode(mObj)
+        locMObj = createNode("locator", "{}_LOC".format(mFn.name()), mDagMod)
+        locMObjHandle = om2.MObjectHandle(locMObj)
 
-for mObj in mObjs:
-    mObjHandle = om2.MObjectHandle(mObj)
-    mFn = om2.MFnDependencyNode(mObj)
-    locMObj = createNode("locator", "{}_LOC".format(mFn.name()), mDagMod)
-    locMObjHandle = om2.MObjectHandle(locMObj)
+        mPlug = findPlug(mObjHandle, "worldMatrix")
+        if mPlug.isArray:
+            mtxIdxZero = mPlug.elementByLogicalIndex(0)
 
-    mPlug = findPlug(mObjHandle, "worldMatrix")
-    if mPlug.isArray:
-        mtxIdxZero = mPlug.elementByLogicalIndex(0)
+            plugMObj = mtxIdxZero.asMObject()
+            mFnMtxData = om2.MFnMatrixData(plugMObj)
+            mMtx = mFnMtxData.matrix()
 
-        plugMObj = mtxIdxZero.asMObject()
-        mFnMtxData = om2.MFnMatrixData(plugMObj)
-        mMtx = mFnMtxData.matrix()
-
-        setAtters(locMObjHandle, mMtx)
+            setAtters(locMObjHandle, mMtx)
 
