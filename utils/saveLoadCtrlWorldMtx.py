@@ -5,10 +5,11 @@ Version: 1.0
 Save: selected ctrl/s worldmatrix to a json file
 load: json file value and multiply with ctrls inverseParentMatrix
 USAGE save: Select Ctrl/s run save method to save
-USAGE load: run load method to try load all ctrls or select specific ctrl/s to load value on selected ctrl/s
+USAGE load: run load method to try load select ctrl/s
 
-NOTE: Currently ctrls needs to be uniquely named, is on my toDo list
-NOTE: loading a negative XYZ value on selected object, will not work correctly. another item for my toDo list
+toDo list: Enable load everything in json file
+toDo list: Currently ctrls needs to be uniquely named
+toDo list: loading a negative XYZ value on selected object, will not work correctly. another item for my
 """
 
 import os
@@ -132,6 +133,9 @@ def saveCtrlMtx():
             dagPath = om2.MDagPath()
             pathName = dagPath.getAPathTo(mObj).partialPathName()
 
+            if ":" in pathName:
+                pathName = pathName.split(":")[1]
+
             mtx = getMatrix(mObjHandle)
             jsonDataDict = organizeData(jsonDataDict, pathName, mtx)
 
@@ -141,8 +145,7 @@ def saveCtrlMtx():
         os.makedirs(USERHOMEPATH)
         toFile(jsonDataDict, filename)
 
-
-def loadCtrlMtx():
+def loadCtrlMtx(matchScl):
     """
     load ctrl mtx
     if: there is a selection the script will try to load the value on the selected ctrl
@@ -152,24 +155,6 @@ def loadCtrlMtx():
     jsonData = fromFile(filename)
 
     if not selList.length():
-        for ctrlName, value in jsonData.items():
-            mMtx = om2.MMatrix(value)
-            localSelList = om2.MSelectionList()
-
-            try:
-                localSelList.add("*:{}".format(ctrlName))
-            except:
-                localSelList.add(ctrlName)
-
-            driven = localSelList.getDependNode(0)
-            drivenMObjHandle = om2.MObjectHandle(driven)
-
-            parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
-            newMtx = mMtx * parentInverseMtx
-
-            setAtters(drivenMObjHandle, newMtx)
-        print("Attrs loaded!")
-    else:
         mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
         for mobj in mObjs:
             mFn = om2.MFnDependencyNode(mobj)
@@ -184,7 +169,7 @@ def loadCtrlMtx():
                 parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
                 mMtx = mMtx * parentInverseMtx
 
-                setAtters(drivenMObjHandle, mMtx)
+                setAtters(drivenMObjHandle, mMtx, matchScl=matchScl)
             else:
                 print("{} is not in the saved json dictionary!".format(objName))
-        print("Loaded on selected ctrl/s")
+        print("Done!")
