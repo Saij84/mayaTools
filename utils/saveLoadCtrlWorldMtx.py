@@ -22,6 +22,7 @@ FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
 filename = "ctrlWorldMtx_v001.json"
 fileList = sorted(os.listdir(USERHOMEPATH))
+dagPath = om2.MDagPath()
 
 
 def toFile(jsonDataDump, filename):
@@ -45,7 +46,27 @@ def fromFile(filename):
         return jsonData
 
 
-def organizeData(jsonDataDict, ctrlName, matrix):
+def getParentCtrl(mOBjHandle):
+    """
+    Recursively find parent ctrl
+    :param mOBjHandle: MObjectHandle
+    :return: str
+    """
+    if mOBjHandle.isValid():
+        mObj = mOBjHandle.object()
+        mFnDag = om2.MFnDagNode(mObj)
+        nodeParent = mFnDag.parent(0)
+        parentPath = dagPath.getAPathTo(nodeParent)
+        parentMOBjHandle = om2.MObjectHandle(nodeParent)
+        try:
+            shape = parentPath.extendToShape()
+            if shape.apiType() == om2.MFn.kNurbsCurve:
+                return parentPath
+        except:
+            return getParentCtrl(parentMOBjHandle)
+
+
+def organizeData(jsonDataDict, ctrlName, parentNode, matrix):
     """
     Organizes data ready to be exported to json file
     :param ctrlName: str, fullDagPath with namespace replaced with wildcard sign
@@ -53,7 +74,15 @@ def organizeData(jsonDataDict, ctrlName, matrix):
     :return: json
     """
     matrixForSerialization = tuple(matrix)
-    jsonDataDict.update({ctrlName: matrixForSerialization})
+    jsonDataDict.update(
+        {
+            ctrlName:
+                {
+                    "parent": parentNode,
+                    "matrix": matrixForSerialization
+                }
+        }
+    )
 
     return jsonDataDict
 
@@ -137,13 +166,15 @@ def saveCtrlMtx():
                 pathName = pathName.split(":")[1]
 
             mtx = getMatrix(mObjHandle)
-            jsonDataDict = organizeData(jsonDataDict, pathName, mtx)
+            parentNode = str(getParentCtrl(mObjHandle))
+            jsonDataDict = organizeData(jsonDataDict, pathName, parentNode, mtx)
 
     if os.path.isdir(USERHOMEPATH):
         toFile(jsonDataDict, filename)
     else:
         os.makedirs(USERHOMEPATH)
         toFile(jsonDataDict, filename)
+
 
 def loadCtrlMtx(matchScl):
     """
@@ -173,3 +204,14 @@ def loadCtrlMtx(matchScl):
             else:
                 print("{} is not in the saved json dictionary!".format(objName))
         print("Done!")
+
+# selList = om2.MGlobal.getActiveSelectionList()
+# mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
+#
+
+#
+#
+# for mObj in mObjs:
+#     mObjHandle = om2.MObjectHandle(mObj)
+#     test = getParentCtrl(mObjHandle)
+#     print(test)
