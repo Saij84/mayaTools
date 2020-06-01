@@ -45,26 +45,44 @@ def fromFile(filename):
         jsonData = json.load(jsonFile)
         return jsonData
 
-
-def getParentCtrl(mOBjHandle):
+def stripNameSpace(name):
     """
-    Recursively find parent ctrl
-    :param mOBjHandle: MObjectHandle
+    Check to see if there is a namespace on the incoming name, if yes, strip and return name with no namespace
+    :param name: str
+    :return: str, name with no namespace
+    """
+    name = name
+    if ":" in name:
+        name = name.split(":")[1]
+    return name
+
+
+def getNextCtrlNode(mObjHandle, parent=True):
+    """
+    Recursively find parent/child ctrl
+    :param mObjHandle: MObjectHandle
     :return: str
     """
-    if mOBjHandle.isValid():
-        mObj = mOBjHandle.object()
+    if mObjHandle.isValid():
+        mObj = mObjHandle.object()
         mFnDag = om2.MFnDagNode(mObj)
-        nodeParent = mFnDag.parent(0)
-        parentPath = dagPath.getAPathTo(nodeParent)
-        parentMOBjHandle = om2.MObjectHandle(nodeParent)
-        try:
-            shape = parentPath.extendToShape()
-            if shape.apiType() == om2.MFn.kNurbsCurve:
-                return parentPath
-        except:
-            return getParentCtrl(parentMOBjHandle)
 
+        nextCtrlNode = mFnDag.parent(0)
+        if not parent:
+            nextCtrlNode = mFnDag.child(0)
+
+        nextCtrlNodePath = dagPath.getAPathTo(nextCtrlNode)
+        nextCtrlNodeMObjHandle = om2.MObjectHandle(nextCtrlNode)
+
+        if not nextCtrlNode.apiType() == om2.MFn.kWorld:
+            try:
+                shape = nextCtrlNodePath.extendToShape()
+                if shape.apiType() == om2.MFn.kNurbsCurve:
+                    return nextCtrlNodePath
+            except:
+                return getNextCtrlNode(nextCtrlNodeMObjHandle)
+        else:
+            return ""
 
 def organizeData(jsonDataDict, ctrlName, parentNode, matrix):
     """
@@ -162,12 +180,10 @@ def saveCtrlMtx():
             dagPath = om2.MDagPath()
             pathName = dagPath.getAPathTo(mObj).partialPathName()
 
-            if ":" in pathName:
-                pathName = pathName.split(":")[1]
-
+            pathNameNoNameSpace = stripNameSpace(pathName)
             mtx = getMatrix(mObjHandle)
-            parentNode = str(getParentCtrl(mObjHandle))
-            jsonDataDict = organizeData(jsonDataDict, pathName, parentNode, mtx)
+            parentNode = getNextCtrlNode(mObjHandle)
+            jsonDataDict = organizeData(jsonDataDict, pathNameNoNameSpace, parentNode, mtx)
 
     if os.path.isdir(USERHOMEPATH):
         toFile(jsonDataDict, filename)
@@ -189,10 +205,8 @@ def loadCtrlMtx(matchScl):
         mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
         for mobj in mObjs:
             mFn = om2.MFnDependencyNode(mobj)
-            objName = mFn.name()
-
-            if mFn.namespace:
-                objName = objName.split(":")[-1]
+            name = mFn.name()
+            objName = stripNameSpace(name)
 
             if objName in jsonData:
                 mMtx = om2.MMatrix(jsonData.get(objName))
@@ -205,13 +219,4 @@ def loadCtrlMtx(matchScl):
                 print("{} is not in the saved json dictionary!".format(objName))
         print("Done!")
 
-# selList = om2.MGlobal.getActiveSelectionList()
-# mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
-#
-
-#
-#
-# for mObj in mObjs:
-#     mObjHandle = om2.MObjectHandle(mObj)
-#     test = getParentCtrl(mObjHandle)
-#     print(test)
+saveCtrlMtx()
