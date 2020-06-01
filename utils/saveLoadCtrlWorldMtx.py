@@ -17,7 +17,6 @@ import re
 import json
 import maya.api.OpenMaya as om2
 
-
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
 filename = "ctrlWorldMtx_v001.json"
@@ -45,6 +44,7 @@ def fromFile(filename):
         jsonData = json.load(jsonFile)
         return jsonData
 
+
 def stripNameSpace(name):
     """
     Check to see if there is a namespace on the incoming name, if yes, strip and return name with no namespace
@@ -71,6 +71,7 @@ def getNextCtrlNode(mObjHandle, parent=True):
         if not parent:
             nextCtrlNode = mFnDag.child(0)
 
+        mFnDepend = om2.MFnDependencyNode(nextCtrlNode)
         nextCtrlNodePath = dagPath.getAPathTo(nextCtrlNode)
         nextCtrlNodeMObjHandle = om2.MObjectHandle(nextCtrlNode)
 
@@ -78,11 +79,12 @@ def getNextCtrlNode(mObjHandle, parent=True):
             try:
                 shape = nextCtrlNodePath.extendToShape()
                 if shape.apiType() == om2.MFn.kNurbsCurve:
-                    return nextCtrlNodePath
+                    return mFnDepend.name()
             except:
                 return getNextCtrlNode(nextCtrlNodeMObjHandle)
         else:
             return ""
+
 
 def organizeData(jsonDataDict, ctrlName, parentNode, matrix):
     """
@@ -166,6 +168,10 @@ def getMatrix(mObjectHandle, matrixPlug="worldMatrix"):
         return mtx
 
 
+def setNextNode(nextNode, jsonData):
+    pass
+
+
 def saveCtrlMtx():
     """
     Save all selected ctrl's world matrix
@@ -181,9 +187,10 @@ def saveCtrlMtx():
             pathName = dagPath.getAPathTo(mObj).partialPathName()
 
             pathNameNoNameSpace = stripNameSpace(pathName)
+
             mtx = getMatrix(mObjHandle)
-            parentNode = getNextCtrlNode(mObjHandle)
-            jsonDataDict = organizeData(jsonDataDict, pathNameNoNameSpace, parentNode, mtx)
+            nextCtrlNode = getNextCtrlNode(mObjHandle)
+            jsonDataDict = organizeData(jsonDataDict, pathNameNoNameSpace, nextCtrlNode, mtx)
 
     if os.path.isdir(USERHOMEPATH):
         toFile(jsonDataDict, filename)
@@ -192,7 +199,7 @@ def saveCtrlMtx():
         toFile(jsonDataDict, filename)
 
 
-def loadCtrlMtx(matchScl):
+def loadCtrlMtx(matchScl=True):
     """
     load ctrl mtx
     if: there is a selection the script will try to load the value on the selected ctrl
@@ -201,22 +208,19 @@ def loadCtrlMtx(matchScl):
     selList = om2.MGlobal.getActiveSelectionList()
     jsonData = fromFile(filename)
 
-    if not selList.length():
-        mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
-        for mobj in mObjs:
-            mFn = om2.MFnDependencyNode(mobj)
-            name = mFn.name()
-            objName = stripNameSpace(name)
+    mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
+    for mobj in mObjs:
+        mFn = om2.MFnDependencyNode(mobj)
+        name = mFn.name()
+        objName = stripNameSpace(name)
 
-            if objName in jsonData:
-                mMtx = om2.MMatrix(jsonData.get(objName))
-                drivenMObjHandle = om2.MObjectHandle(mobj)
-                parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
-                mMtx = mMtx * parentInverseMtx
-
-                setAtters(drivenMObjHandle, mMtx, matchScl=matchScl)
-            else:
-                print("{} is not in the saved json dictionary!".format(objName))
-        print("Done!")
-
-saveCtrlMtx()
+        if objName in jsonData:
+            ctrlParent = jsonData[objName].get("parent")
+            mMtx = om2.MMatrix(jsonData[objName].get("matrix"))
+            drivenMObjHandle = om2.MObjectHandle(mobj)
+            parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
+            mMtx = mMtx * parentInverseMtx
+            setAtters(drivenMObjHandle, mMtx, matchScl=matchScl)
+        else:
+            print("{} is not in the saved json dictionary!".format(objName))
+    print("Done!")
