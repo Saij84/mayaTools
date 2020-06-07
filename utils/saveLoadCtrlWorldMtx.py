@@ -23,6 +23,7 @@ filename = "ctrlWorldMtx_v001.json"
 fileList = sorted(os.listdir(USERHOMEPATH))
 dagPath = om2.MDagPath()
 
+jsonDataDict = dict()
 
 def toFile(jsonDataDump, filename):
     """
@@ -57,36 +58,35 @@ def stripNameSpace(name):
     return name
 
 
-def getNextCtrlNode(mObjHandle, parent=True):
+def getNextCtrlNode(mObjHandle):
     """
     Recursively find parent/child ctrl
     :param mObjHandle: MObjectHandle
     :return: str
     """
+
     if mObjHandle.isValid():
         mObj = mObjHandle.object()
         mFnDag = om2.MFnDagNode(mObj)
-
         nextCtrlNode = mFnDag.parent(0)
-        if not parent:
-            nextCtrlNode = mFnDag.child(0)
+        parentMFnDag = om2.MFnDagNode(nextCtrlNode)
 
         mFnDepend = om2.MFnDependencyNode(nextCtrlNode)
-        nextCtrlNodePath = dagPath.getAPathTo(nextCtrlNode)
         nextCtrlNodeMObjHandle = om2.MObjectHandle(nextCtrlNode)
 
-        if not nextCtrlNode.apiType() == om2.MFn.kWorld:
-            try:
-                shape = nextCtrlNodePath.extendToShape()
-                if shape.apiType() == om2.MFn.kNurbsCurve:
-                    return mFnDepend.name()
-            except:
-                return getNextCtrlNode(nextCtrlNodeMObjHandle)
+        name = stripNameSpace(mFnDag.name())
+        parentName = stripNameSpace(mFnDepend.name())
+        mtx = getMatrix(mObjHandle)
+
+        if nextCtrlNode.apiType() == om2.MFn.kWorld or \
+                parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve:
+            return jsonDataDict.update(organizeData(name, "", mtx))
         else:
-            return ""
+            jsonDataDict.update(organizeData(name, parentName, mtx))
+            getNextCtrlNode(nextCtrlNodeMObjHandle)
 
 
-def organizeData(jsonDataDict, ctrlName, parentNode, matrix):
+def organizeData(ctrlName, parentNode, matrix):
     """
     Organizes data ready to be exported to json file
     :param ctrlName: str, fullDagPath with namespace replaced with wildcard sign
@@ -94,18 +94,14 @@ def organizeData(jsonDataDict, ctrlName, parentNode, matrix):
     :return: json
     """
     matrixForSerialization = tuple(matrix)
-    jsonDataDict.update(
-        {
+    myDict = {
             ctrlName:
                 {
                     "parent": parentNode,
                     "matrix": matrixForSerialization
                 }
         }
-    )
-
-    return jsonDataDict
-
+    return myDict
 
 def setAtters(mObjectHandle, mtx, matchScl=True):
     """
@@ -172,25 +168,17 @@ def setNextNode(nextNode, jsonData):
     pass
 
 
-def saveCtrlMtx():
+def saveCtrlMtx(jsonDataDict):
     """
     Save all selected ctrl's world matrix
     """
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
-    jsonDataDict = dict()
 
     for mObj in mObjs:
         if mObj.apiType() == om2.MFn.kTransform:
             mObjHandle = om2.MObjectHandle(mObj)
-            dagPath = om2.MDagPath()
-            pathName = dagPath.getAPathTo(mObj).partialPathName()
-
-            pathNameNoNameSpace = stripNameSpace(pathName)
-
-            mtx = getMatrix(mObjHandle)
-            nextCtrlNode = getNextCtrlNode(mObjHandle)
-            jsonDataDict = organizeData(jsonDataDict, pathNameNoNameSpace, nextCtrlNode, mtx)
+            getNextCtrlNode(mObjHandle)
 
     if os.path.isdir(USERHOMEPATH):
         toFile(jsonDataDict, filename)
@@ -224,3 +212,5 @@ def loadCtrlMtx(matchScl=True):
         else:
             print("{} is not in the saved json dictionary!".format(objName))
     print("Done!")
+
+saveCtrlMtx(jsonDataDict)
