@@ -24,6 +24,7 @@ fileList = sorted(os.listdir(USERHOMEPATH))
 dagPath = om2.MDagPath()
 
 jsonDataDict = dict()
+parentList = list()
 
 def toFile(jsonDataDump, filename):
     """
@@ -187,6 +188,15 @@ def saveCtrlMtx(jsonDataDict):
         toFile(jsonDataDict, filename)
 
 
+def getParentList(jsonData, objName):
+    if jsonData[objName].get("parent") == "":
+        return parentList
+    else:
+        parent = jsonData[objName].get("parent")
+        parentList.append(parent)
+        getParentList(jsonData, parent)
+
+
 def loadCtrlMtx(matchScl=True):
     """
     load ctrl mtx
@@ -202,15 +212,19 @@ def loadCtrlMtx(matchScl=True):
         name = mFn.name()
         objName = stripNameSpace(name)
 
+        test = getParentList(jsonData, objName)
+        print(test)
+
         if objName in jsonData:
-            ctrlParent = jsonData[objName].get("parent")
-            mMtx = om2.MMatrix(jsonData[objName].get("matrix"))
-            drivenMObjHandle = om2.MObjectHandle(mobj)
-            parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
-            mMtx = mMtx * parentInverseMtx
-            setAtters(drivenMObjHandle, mMtx, matchScl=matchScl)
+            for parent in reversed(parentList):
+                mMtx = om2.MMatrix(jsonData[parent].get("matrix"))
+                drivenMObjHandle = om2.MObjectHandle(mobj)
+                parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
+                mMtx = mMtx * parentInverseMtx
+
+                setAtters(drivenMObjHandle, mMtx, matchScl=matchScl)
         else:
             print("{} is not in the saved json dictionary!".format(objName))
     print("Done!")
-
-saveCtrlMtx(jsonDataDict)
+# saveCtrlMtx(jsonDataDict)
+loadCtrlMtx()
