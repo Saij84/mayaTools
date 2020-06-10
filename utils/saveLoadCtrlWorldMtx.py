@@ -26,10 +26,11 @@ dagPath = om2.MDagPath()
 jsonDataDict = dict()
 parentList = list()
 
+
 def toFile(jsonDataDump, filename):
     """
     Write to json file
-    :param jsonDataDump: jason data
+    :param jsonDataDump: json data
     :return: None
     """
     with open(os.path.join(USERHOMEPATH, filename), "w") as jDump2File:
@@ -47,62 +48,34 @@ def fromFile(filename):
         return jsonData
 
 
-def stripNameSpace(name):
+def stripNameSpace(objName):
     """
     Check to see if there is a namespace on the incoming name, if yes, strip and return name with no namespace
     :param name: str
     :return: str, name with no namespace
     """
-    name = name
+    name = objName
     if ":" in name:
         name = name.split(":")[1]
     return name
 
 
-def getNextCtrlNode(mObjHandle):
+def jsonNode(ctrlName, parentNode, matrix):
     """
-    Recursively find parent/child ctrl
-    :param mObjHandle: MObjectHandle
-    :return: str
-    """
-
-    if mObjHandle.isValid():
-        mObj = mObjHandle.object()
-        mFnDag = om2.MFnDagNode(mObj)
-        nextCtrlNode = mFnDag.parent(0)
-        parentMFnDag = om2.MFnDagNode(nextCtrlNode)
-
-        mFnDepend = om2.MFnDependencyNode(nextCtrlNode)
-        nextCtrlNodeMObjHandle = om2.MObjectHandle(nextCtrlNode)
-
-        name = stripNameSpace(mFnDag.name())
-        parentName = stripNameSpace(mFnDepend.name())
-        mtx = getMatrix(mObjHandle)
-
-        if nextCtrlNode.apiType() == om2.MFn.kWorld or \
-                parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve:
-            return jsonDataDict.update(organizeData(name, "", mtx))
-        else:
-            jsonDataDict.update(organizeData(name, parentName, mtx))
-            getNextCtrlNode(nextCtrlNodeMObjHandle)
-
-
-def organizeData(ctrlName, parentNode, matrix):
-    """
-    Organizes data ready to be exported to json file
+    create json node
     :param ctrlName: str, fullDagPath with namespace replaced with wildcard sign
     :param matrix
     :return: json
     """
-    matrixForSerialization = tuple(matrix)
-    myDict = {
-            ctrlName:
-                {
-                    "parent": parentNode,
-                    "matrix": matrixForSerialization
-                }
-        }
-    return myDict
+    nodeDict = {
+        ctrlName:
+            {
+                "parent": parentNode,
+                "matrix": matrix
+            }
+    }
+    return nodeDict
+
 
 def setAtters(mObjectHandle, mtx, matchScl=True):
     """
@@ -144,6 +117,34 @@ def setAtters(mObjectHandle, mtx, matchScl=True):
             rotZ.setFloat(scl[2])
 
 
+def getNextCtrlNode(mObjHandle):
+    """
+    Recursively find parent/child ctrl
+    :param mObjHandle: MObjectHandle
+    :return: None
+    """
+    if mObjHandle.isValid():
+        mObj = mObjHandle.object()
+        mFnDag = om2.MFnDagNode(mObj)
+        nextCtrlNode = mFnDag.parent(0)
+        parentMFnDag = om2.MFnDagNode(nextCtrlNode)
+
+        mFnDepend = om2.MFnDependencyNode(nextCtrlNode)
+        nextCtrlNodeMObjHandle = om2.MObjectHandle(nextCtrlNode)
+
+        name = stripNameSpace(mFnDag.name())
+        parentName = stripNameSpace(mFnDepend.name())
+        mtx = getMatrix(mObjHandle)
+
+        if nextCtrlNode.apiType() == om2.MFn.kWorld or \
+                parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve:
+                jsonDataDict.update(jsonNode(name, "", mtx))
+                return
+        else:
+            jsonDataDict.update(jsonNode(name, parentName, mtx))
+            getNextCtrlNode(nextCtrlNodeMObjHandle)
+
+
 def getMatrix(mObjectHandle, matrixPlug="worldMatrix"):
     """
     Get matrix, if plug is an array it will return index 0 of that plug
@@ -161,15 +162,26 @@ def getMatrix(mObjectHandle, matrixPlug="worldMatrix"):
         plugMObj = mtxPlug.asMObject()
         mFnMtxData = om2.MFnMatrixData(plugMObj)
         mtx = mFnMtxData.matrix()
-
-        return mtx
-
-
-def setNextNode(nextNode, jsonData):
-    pass
+        serializableMtx = tuple(mtx)
+        return serializableMtx
 
 
-def saveCtrlMtx(jsonDataDict):
+def getParentList(jsonData, objName):
+    """
+    Recursively add the parent srtBuffers to a parentList
+    :param jsonData: json
+    :param objName: str
+    :return: None
+    """
+    if jsonData[objName].get("parent") == "":
+        return
+    else:
+        parent = jsonData[objName].get("parent")
+        parentList.append(parent)
+        getParentList(jsonData, parent)
+
+
+def saveCtrlMtx():
     """
     Save all selected ctrl's world matrix
     """
@@ -186,16 +198,7 @@ def saveCtrlMtx(jsonDataDict):
     else:
         os.makedirs(USERHOMEPATH)
         toFile(jsonDataDict, filename)
-
-
-def getParentList(jsonData, objName):
-    if jsonData[objName].get("parent") == "":
-        return parentList
-    else:
-        parent = jsonData[objName].get("parent")
-        parentList.append(parent)
-        getParentList(jsonData, parent)
-
+    print("Save Done!")
 
 def loadCtrlMtx(matchScl=True):
     """
@@ -205,26 +208,26 @@ def loadCtrlMtx(matchScl=True):
     """
     selList = om2.MGlobal.getActiveSelectionList()
     jsonData = fromFile(filename)
-
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
     for mobj in mObjs:
         mFn = om2.MFnDependencyNode(mobj)
         name = mFn.name()
         objName = stripNameSpace(name)
 
-        test = getParentList(jsonData, objName)
-        print(test)
+        parentList.append(objName)
+        getParentList(jsonData, objName)
 
         if objName in jsonData:
             for parent in reversed(parentList):
-                mMtx = om2.MMatrix(jsonData[parent].get("matrix"))
-                drivenMObjHandle = om2.MObjectHandle(mobj)
+                parentSelList = om2.MGlobal.getSelectionListByName(parent)
+                parentMObj = parentSelList.getDependNode(0)
+                parentMtx = om2.MMatrix(jsonData[parent].get("matrix"))
+                drivenMObjHandle = om2.MObjectHandle(parentMObj)
                 parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
-                mMtx = mMtx * parentInverseMtx
+                parentInverseMMtx = om2.MMatrix(parentInverseMtx)
 
-                setAtters(drivenMObjHandle, mMtx, matchScl=matchScl)
+                mtx = parentMtx * parentInverseMMtx
+                setAtters(drivenMObjHandle, mtx, matchScl=matchScl)
         else:
             print("{} is not in the saved json dictionary!".format(objName))
-    print("Done!")
-# saveCtrlMtx(jsonDataDict)
-loadCtrlMtx()
+    print("Load Done!")
