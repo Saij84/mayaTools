@@ -16,13 +16,14 @@ import os
 import re
 import json
 import maya.api.OpenMaya as om2
+import maya.cmds as cmds
 
 FINDDIGITS = re.compile(r"\d+")
 USERHOMEPATH = r"c:\mayaCtrlJsons"
 filename = "ctrlWorldMtx_v001.json"
 fileList = sorted(os.listdir(USERHOMEPATH))
-dagPath = om2.MDagPath()
 
+dagPath = om2.MDagPath()
 jsonDataDict = dict()
 parentList = list()
 
@@ -77,6 +78,18 @@ def jsonNode(ctrlName, parentNode, matrix):
     return nodeDict
 
 
+def setFloatNotConnected(srtMTransMtx, mPlugList):
+    """
+    Setting values on unlocked attributes
+    :param srtMTransMtx: MTransformationMatrix (translation, rotation or scale)
+    :param mPlugList: MPlug
+    :return: None
+    """
+    for idx, srtPlug in enumerate(mPlugList):
+        if not srtPlug.isConnected:
+            srtPlug.setFloat(srtMTransMtx[idx])
+
+
 def setAtters(mObjectHandle, mtx, matchScl=True):
     """
     Sets translation/rotation
@@ -96,33 +109,28 @@ def setAtters(mObjectHandle, mtx, matchScl=True):
         transX = mFn.findPlug("translateX", False)
         transY = mFn.findPlug("translateY", False)
         transZ = mFn.findPlug("translateZ", False)
-        transX.setFloat(trans.x)
-        transY.setFloat(trans.y)
-        transZ.setFloat(trans.z)
+        setFloatNotConnected(trans, [transX, transY, transZ])
 
         rotX = mFn.findPlug("rotateX", False)
         rotY = mFn.findPlug("rotateY", False)
         rotZ = mFn.findPlug("rotateZ", False)
-        rotX.setFloat(rot.x)
-        rotY.setFloat(rot.y)
-        rotZ.setFloat(rot.z)
+        setFloatNotConnected(rot, [rotX, rotY, rotZ])
 
         if matchScl:
             scl = mTransMtx.scale(om2.MSpace.kObject)
-            rotX = mFn.findPlug("scaleX", False)
-            rotY = mFn.findPlug("scaleY", False)
-            rotZ = mFn.findPlug("scaleZ", False)
-            rotX.setFloat(scl[0])
-            rotY.setFloat(scl[1])
-            rotZ.setFloat(scl[2])
+            sclX = mFn.findPlug("scaleX", False)
+            sclY = mFn.findPlug("scaleY", False)
+            sclZ = mFn.findPlug("scaleZ", False)
+            setFloatNotConnected(scl, [sclX, sclY, sclZ])
 
 
 def getNextCtrlNode(mObjHandle):
     """
-    Recursively find parent/child ctrl
+    Recursively find parent node and stops at the given blacklist
     :param mObjHandle: MObjectHandle
     :return: None
     """
+    blackList = ["world", "rig"]
     if mObjHandle.isValid():
         mObj = mObjHandle.object()
         mFnDag = om2.MFnDagNode(mObj)
@@ -135,11 +143,10 @@ def getNextCtrlNode(mObjHandle):
         name = stripNameSpace(mFnDag.name())
         parentName = stripNameSpace(mFnDepend.name())
         mtx = getMatrix(mObjHandle)
-
-        if nextCtrlNode.apiType() == om2.MFn.kWorld or \
-                parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve:
-                jsonDataDict.update(jsonNode(name, "", mtx))
-                return
+        if nextCtrlNode.apiType() in blackList or parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve \
+                or parentMFnDag.childCount() > 1:
+            jsonDataDict.update(jsonNode(name, "", mtx))
+            return
         else:
             jsonDataDict.update(jsonNode(name, parentName, mtx))
             getNextCtrlNode(nextCtrlNodeMObjHandle)
@@ -200,6 +207,7 @@ def saveCtrlMtx():
         toFile(jsonDataDict, filename)
     print("Save Done!")
 
+
 def loadCtrlMtx(matchScl=True):
     """
     load ctrl mtx
@@ -219,7 +227,11 @@ def loadCtrlMtx(matchScl=True):
 
         if objName in jsonData:
             for parent in reversed(parentList):
-                parentSelList = om2.MGlobal.getSelectionListByName(parent)
+                parentName = parent
+                if not cmds.objExists(parentName):
+                    parentName = "*:{}".format(parent)
+
+                parentSelList = om2.MGlobal.getSelectionListByName(parentName)
                 parentMObj = parentSelList.getDependNode(0)
                 parentMtx = om2.MMatrix(jsonData[parent].get("matrix"))
                 drivenMObjHandle = om2.MObjectHandle(parentMObj)
