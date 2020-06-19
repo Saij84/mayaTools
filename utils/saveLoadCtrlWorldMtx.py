@@ -78,7 +78,7 @@ def jsonNode(ctrlName, parentNode, matrix):
     return nodeDict
 
 
-def setFloatNotConnected(srtMTransMtx, mPlugList):
+def setFloatWithConditions(srtMTransMtx, mPlugList):
     """
     Setting values on unlocked attributes
     :param srtMTransMtx: MTransformationMatrix (translation, rotation or scale)
@@ -86,8 +86,10 @@ def setFloatNotConnected(srtMTransMtx, mPlugList):
     :return: None
     """
     for idx, srtPlug in enumerate(mPlugList):
-        if not srtPlug.isConnected:
+        if not srtPlug.parent().isConnected and not srtPlug.isLocked and not srtPlug.isConnected:
             srtPlug.setFloat(srtMTransMtx[idx])
+        else:
+            continue
 
 
 def setAtters(mObjectHandle, mtx, matchScl=True):
@@ -109,19 +111,19 @@ def setAtters(mObjectHandle, mtx, matchScl=True):
         transX = mFn.findPlug("translateX", False)
         transY = mFn.findPlug("translateY", False)
         transZ = mFn.findPlug("translateZ", False)
-        setFloatNotConnected(trans, [transX, transY, transZ])
+        setFloatWithConditions(trans, [transX, transY, transZ])
 
         rotX = mFn.findPlug("rotateX", False)
         rotY = mFn.findPlug("rotateY", False)
         rotZ = mFn.findPlug("rotateZ", False)
-        setFloatNotConnected(rot, [rotX, rotY, rotZ])
+        setFloatWithConditions(rot, [rotX, rotY, rotZ])
 
         if matchScl:
             scl = mTransMtx.scale(om2.MSpace.kObject)
             sclX = mFn.findPlug("scaleX", False)
             sclY = mFn.findPlug("scaleY", False)
             sclZ = mFn.findPlug("scaleZ", False)
-            setFloatNotConnected(scl, [sclX, sclY, sclZ])
+            setFloatWithConditions(scl, [sclX, sclY, sclZ])
 
 
 def getNextCtrlNode(mObjHandle):
@@ -143,8 +145,8 @@ def getNextCtrlNode(mObjHandle):
         name = stripNameSpace(mFnDag.name())
         parentName = stripNameSpace(mFnDepend.name())
         mtx = getMatrix(mObjHandle)
-        if nextCtrlNode.apiType() in blackList or parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve \
-                or parentMFnDag.childCount() > 1:
+        if parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve or parentMFnDag.childCount() > 1 \
+                or parentName in blackList:
             jsonDataDict.update(jsonNode(name, "", mtx))
             return
         else:
@@ -208,7 +210,7 @@ def saveCtrlMtx():
     print("Save Done!")
 
 
-def loadCtrlMtx(matchScl=True):
+def loadCtrlMtx(matchScl=True, loadBuffers=False):
     """
     load ctrl mtx
     if: there is a selection the script will try to load the value on the selected ctrl
@@ -226,7 +228,10 @@ def loadCtrlMtx(matchScl=True):
         getParentList(jsonData, objName)
 
         if objName in jsonData:
-            for parent in reversed(parentList):
+            objectList = list(objName)
+            if loadBuffers:
+                objectList = reversed(parentList)
+            for parent in objectList:
                 parentName = parent
                 if not cmds.objExists(parentName):
                     parentName = "*:{}".format(parent)
