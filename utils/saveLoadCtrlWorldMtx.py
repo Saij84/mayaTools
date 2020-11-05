@@ -11,21 +11,20 @@ toDo list: Enable load everything in json file
 toDo list: Currently ctrls needs to be uniquely named
 toDo list: loading a negative XYZ value on selected object, will not work correctly. another item for my
 """
-
 import os
 import re
 import json
-import maya.api.OpenMaya as om2
 import maya.cmds as cmds
+import maya.api.OpenMaya as om2
 
 FINDDIGITS = re.compile(r"\d+")
-USERHOMEPATH = r"c:\mayaCtrlJsons"
+USERHOMEPATH = r"/depts/cg_treehouse/fangc/mayaCtrlJsons"
 filename = "ctrlWorldMtx_v001.json"
 fileList = sorted(os.listdir(USERHOMEPATH))
 
+treeList = list()
 dagPath = om2.MDagPath()
 jsonDataDict = dict()
-parentList = list()
 
 
 def toFile(jsonDataDump, filename):
@@ -57,7 +56,7 @@ def stripNameSpace(objName):
     """
     name = objName
     if ":" in name:
-        name = name.split(":")[1]
+        name = name.split(":")[-1]
     return name
 
 
@@ -86,7 +85,7 @@ def setFloatWithConditions(srtMTransMtx, mPlugList):
     :return: None
     """
     for idx, srtPlug in enumerate(mPlugList):
-        if not srtPlug.parent().isConnected and not srtPlug.isLocked and not srtPlug.isConnected:
+        if not srtPlug.isLocked and not srtPlug.isFreeToChange():
             srtPlug.setFloat(srtMTransMtx[idx])
         else:
             continue
@@ -175,7 +174,7 @@ def getMatrix(mObjectHandle, matrixPlug="worldMatrix"):
         return serializableMtx
 
 
-def getParentList(jsonData, objName):
+def getTreeList(jsonData, objName):
     """
     Recursively add the parent srtBuffers to a parentList
     :param jsonData: json
@@ -186,13 +185,13 @@ def getParentList(jsonData, objName):
         return
     else:
         parent = jsonData[objName].get("parent")
-        parentList.append(parent)
-        getParentList(jsonData, parent)
+        treeList.append(parent)
+        getTreeList(jsonData, parent)
 
 
 def saveCtrlMtx():
     """
-    Save all selected ctrl's world matrix
+    Save all selected ctrl and parents world matrix
     """
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
@@ -210,40 +209,43 @@ def saveCtrlMtx():
     print("Save Done!")
 
 
-def loadCtrlMtx(matchScl=True, loadBuffers=False):
+def loadCtrlMtx(matchScl=False, loadBuffers=False):
     """
     load ctrl mtx
     if: there is a selection the script will try to load the value on the selected ctrl
     else: try to load everything from file
     """
-    selList = om2.MGlobal.getActiveSelectionList()
+
     jsonData = fromFile(filename)
+    selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
     for mobj in mObjs:
         mFn = om2.MFnDependencyNode(mobj)
         name = mFn.name()
         objName = stripNameSpace(name)
 
-        parentList.append(objName)
-        getParentList(jsonData, objName)
+        treeList.append(objName)
+        getTreeList(jsonData, objName)
 
         if objName in jsonData:
-            objectList = list(objName)
+            objectList = [objName]
             if loadBuffers:
-                objectList = reversed(parentList)
-            for parent in objectList:
-                parentName = parent
-                if not cmds.objExists(parentName):
-                    parentName = "*:{}".format(parent)
+                objectList = reversed(treeList)
 
-                parentSelList = om2.MGlobal.getSelectionListByName(parentName)
-                parentMObj = parentSelList.getDependNode(0)
-                parentMtx = om2.MMatrix(jsonData[parent].get("matrix"))
-                drivenMObjHandle = om2.MObjectHandle(parentMObj)
+            for obj in objectList:
+                myObjName = obj
+                if not cmds.objExists(myObjName):
+                    myObjName = "*:{}".format(obj)
+
+                objSelList = om2.MGlobal.getSelectionListByName(myObjName)
+                mObj = objSelList.getDependNode(0)
+                fromFileMtx = om2.MMatrix(jsonData[obj].get("matrix"))
+                drivenMObjHandle = om2.MObjectHandle(mObj)
                 parentInverseMtx = getMatrix(drivenMObjHandle, "parentInverseMatrix")
                 parentInverseMMtx = om2.MMatrix(parentInverseMtx)
 
-                mtx = parentMtx * parentInverseMMtx
+                mtx = fromFileMtx * parentInverseMMtx
+
                 setAtters(drivenMObjHandle, mtx, matchScl=matchScl)
         else:
             print("{} is not in the saved json dictionary!".format(objName))
