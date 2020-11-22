@@ -17,37 +17,30 @@ import json
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 
-
-
-dagPath = om2.MDagPath()
-
 class SaveLoadCtrls():
     def __init__(self):
-        self.filename = 'ctrlWorldMtx_v001.json'
-        self.USERHOMEPATH = r'C:\tools\mayaTools\saveLoadCtrls\json'
         self.FINDDIGITS = re.compile(r'\d+')
-        self.fileList = sorted(os.listdir(self.USERHOMEPATH))
-
+        self.dagPath = om2.MDagPath()
         self.treeList = list()
         self.jsonDataDict = dict()
 
-    def toFile(self, jsonDataDump, filename):
+    def toFile(self, jsonDataDump, USERHOMEPATH, filename):
         '''
         Write to json file
         :param jsonDataDump: json data
         :return: None
         '''
-        with open(os.path.join(self.USERHOMEPATH, filename), 'w') as jDump2File:
+        with open(os.path.join(USERHOMEPATH, filename), 'w') as jDump2File:
             json.dump(jsonDataDump, jDump2File)
 
 
-    def fromFile(self, filename):
+    def fromFile(self, USERHOMEPATH, filename):
         '''
         Read json file
         :param filename: str
         :return: json dictionary
         '''
-        with open(os.path.join(self.USERHOMEPATH, filename), 'r') as jsonFile:
+        with open(os.path.join(USERHOMEPATH, filename), 'r') as jsonFile:
             jsonData = json.load(jsonFile)
             return jsonData
 
@@ -193,7 +186,7 @@ class SaveLoadCtrls():
             self.getTreeList(jsonData, parent)
 
 
-    def saveCtrlMtx(self):
+    def saveCtrlMtx(self, USERHOMEPATH, FILENAME):
         '''
         Save all selected ctrl and parents world matrix
         '''
@@ -205,11 +198,11 @@ class SaveLoadCtrls():
                 mObjHandle = om2.MObjectHandle(mObj)
                 self.getNextCtrlNode(mObjHandle)
 
-        if os.path.isdir(self.USERHOMEPATH):
-            self.toFile(self.jsonDataDict, self.filename)
+        if os.path.isdir(USERHOMEPATH):
+            self.toFile(self.jsonDataDict, USERHOMEPATH, FILENAME)
         else:
-            os.makedirs(self.USERHOMEPATH)
-            self.toFile(self.jsonDataDict, self.filename)
+            os.makedirs(USERHOMEPATH)
+            self.toFile(self.jsonDataDict, USERHOMEPATH, FILENAME)
         print('Save Done!')
 
 
