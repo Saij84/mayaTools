@@ -7,7 +7,7 @@ from PySide2 import QtWidgets
 from shiboken2 import wrapInstance
 import maya.OpenMayaUI as omUi
 from mayaTools.saveLoadCtrls.constants import constants as CONST
-from mayaTools.saveLoadCtrls.core.saveLoadCtrls import SaveLoadCtrls
+from mayaTools.saveLoadCtrls.core import saveLoadCtrls as core
 
 
 def maya_main_window():
@@ -23,7 +23,6 @@ class mainDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=maya_main_window()):
         super(mainDialog, self).__init__(parent)
-        self.slc = SaveLoadCtrls()
         self.setWindowTitle('')
         self.setMinimumSize(470, 115)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
@@ -69,7 +68,7 @@ class mainDialog(QtWidgets.QDialog):
         self.load_btn.clicked.connect(self.loadCtrls)
 
     def saveCtrls(self):
-        self.slc.saveCtrlMtx(CONST.USERHOMEPATH, CONST.FILENAME)
+        core.saveCtrlMtx(CONST.USERHOMEPATH, CONST.FILENAME)
 
     def loadCtrls(self):
         matchScl = False
@@ -80,7 +79,7 @@ class mainDialog(QtWidgets.QDialog):
         if self.loadBuffers_checkBox.isChecked():
             loadBuffers = True
 
-        self.slc.loadCtrlMtx(matchScl=matchScl, loadBuffers=loadBuffers)
+        core.loadCtrlMtx(matchScl=matchScl, loadBuffers=loadBuffers)
 
     def setfilePath(self):
         file_path, self.selected_filter = QtWidgets.QFileDialog.getOpenFileName(self, "Select File",
