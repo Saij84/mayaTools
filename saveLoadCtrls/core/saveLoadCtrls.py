@@ -11,50 +11,43 @@ toDo list: Enable load everything in json file
 toDo list: Currently ctrls needs to be uniquely named
 toDo list: loading a negative XYZ value on selected object, will not work correctly. another item for my
 '''
+
 import os
 import re
 import json
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
+from mayaTools.saveLoadCtrls.constants import constants as CONST
+from mayaTools.saveLoadCtrls.utils import utils as utils
+
 
 class SaveLoadCtrls():
     def __init__(self):
-        self.FINDDIGITS = re.compile(r'\d+')
+        self.FINDDIGITS = re.compile(CONST.FINDDIGITS)
         self.dagPath = om2.MDagPath()
         self.treeList = list()
         self.jsonDataDict = dict()
 
-    def toFile(self, jsonDataDump, USERHOMEPATH, filename):
+
+    def toFile(self, jsonDataDump, userPath, filename):
         '''
         Write to json file
         :param jsonDataDump: json data
         :return: None
         '''
-        with open(os.path.join(USERHOMEPATH, filename), 'w') as jDump2File:
+        with open(os.path.join(userPath, filename), 'w') as jDump2File:
             json.dump(jsonDataDump, jDump2File)
 
 
-    def fromFile(self, USERHOMEPATH, filename):
+    def fromFile(self, userPath, filename):
         '''
         Read json file
         :param filename: str
         :return: json dictionary
         '''
-        with open(os.path.join(USERHOMEPATH, filename), 'r') as jsonFile:
+        with open(os.path.join(userPath, filename), 'r') as jsonFile:
             jsonData = json.load(jsonFile)
             return jsonData
-
-
-    def stripNameSpace(self, objName):
-        '''
-        Check to see if there is a namespace on the incoming name, if yes, strip and return name with no namespace
-        :param name: str
-        :return: str, name with no namespace
-        '''
-        name = objName
-        if ':' in name:
-            name = name.split(':')[-1]
-        return name
 
 
     def jsonNode(self, ctrlName, parentNode, matrix):
@@ -186,10 +179,23 @@ class SaveLoadCtrls():
             self.getTreeList(jsonData, parent)
 
 
+    def stripNameSpace(self, objName):
+        '''
+        Check to see if there is a namespace on the incoming name, if yes, strip and return name with no namespace
+        :param name: str
+        :return: str, name with no namespace
+        '''
+        name = objName
+        if ':' in name:
+            name = name.split(':')[-1]
+        return name
+
+
     def saveCtrlMtx(self, USERHOMEPATH, FILENAME):
         '''
         Save all selected ctrl and parents world matrix
         '''
+        print(USERHOMEPATH, FILENAME)
         selList = om2.MGlobal.getActiveSelectionList()
         mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 
@@ -213,7 +219,7 @@ class SaveLoadCtrls():
         else: try to load everything from file
         '''
 
-        jsonData = self.fromFile(self.filename)
+        jsonData = self.fromFile(CONST.USERHOMEPATH, CONST.FILENAME)
         selList = om2.MGlobal.getActiveSelectionList()
         mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
         for mobj in mObjs:

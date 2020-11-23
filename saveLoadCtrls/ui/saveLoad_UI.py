@@ -1,9 +1,14 @@
-import os
+import sys
+if not "C:\\tools\\" in sys.path:
+    sys.path.append("C:\\tools\\")
+
 from PySide2 import QtCore
 from PySide2 import QtWidgets
 from shiboken2 import wrapInstance
 import maya.OpenMayaUI as omUi
-from saveLoadCtrls.core.saveLoadCtrls import SaveLoadCtrls
+from mayaTools.saveLoadCtrls.constants import constants as CONST
+from mayaTools.saveLoadCtrls.core.saveLoadCtrls import SaveLoadCtrls
+
 
 def maya_main_window():
     """
@@ -16,13 +21,8 @@ def maya_main_window():
 class mainDialog(QtWidgets.QDialog):
 
 
-    FILE_FILTERS = "json (*.json);;All Files (*.*)"
-    selected_filter = "json (*json *.json)"
-
     def __init__(self, parent=maya_main_window()):
         super(mainDialog, self).__init__(parent)
-        self.FILENAME = 'ctrlWorldMtx_v001.json'
-        self.USERHOMEPATH = r'C:\tools\mayaTools\saveLoadCtrls\json'
         self.slc = SaveLoadCtrls()
         self.setWindowTitle('')
         self.setMinimumSize(470, 115)
@@ -33,7 +33,7 @@ class mainDialog(QtWidgets.QDialog):
 
 
     def create_widgets(self):
-        self.lineEdit = QtWidgets.QLineEdit('{}\\{}'.format(self.USERHOMEPATH, self.FILENAME))
+        self.lineEdit = QtWidgets.QLineEdit('{}\\{}'.format(CONST.USERHOMEPATH, CONST.FILENAME))
         self.loadBuffers_checkBox = QtWidgets.QCheckBox('Load Buffers')
         self.loadBuffers_checkBox.setChecked(True)
         self.loadScale_checkBox = QtWidgets.QCheckBox('Load Scale')
@@ -69,7 +69,7 @@ class mainDialog(QtWidgets.QDialog):
         self.load_btn.clicked.connect(self.loadCtrls)
 
     def saveCtrls(self):
-        self.slc.saveCtrlMtx(self.USERHOMEPATH, self.FILENAME)
+        self.slc.saveCtrlMtx(CONST.USERHOMEPATH, CONST.FILENAME)
 
     def loadCtrls(self):
         matchScl = False
@@ -85,8 +85,8 @@ class mainDialog(QtWidgets.QDialog):
     def setfilePath(self):
         file_path, self.selected_filter = QtWidgets.QFileDialog.getOpenFileName(self, "Select File",
                                                                                 "",
-                                                                                self.FILE_FILTERS,
-                                                                                self.selected_filter)
+                                                                                CONST.FILE_FILTERS,
+                                                                                CONST.SELECTED_FILTER)
         if file_path:
             self.lineEdit.setText(file_path)
 if __name__ == '__main__':
