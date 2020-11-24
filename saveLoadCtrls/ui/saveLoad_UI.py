@@ -1,7 +1,3 @@
-import sys
-if not "C:\\tools\\" in sys.path:
-    sys.path.append("C:\\tools\\")
-
 from PySide2 import QtCore
 from PySide2 import QtWidgets
 from shiboken2 import wrapInstance
@@ -18,11 +14,11 @@ def maya_main_window():
     maya_main_ptr = omUi.MQtUtil.mainWindow()
     return wrapInstance(int(maya_main_ptr), QtWidgets.QWidget)
 
-class mainDialog(QtWidgets.QDialog):
+class MainDialog(QtWidgets.QDialog):
 
 
     def __init__(self, parent=maya_main_window()):
-        super(mainDialog, self).__init__(parent)
+        super(MainDialog, self).__init__(parent)
         self.setWindowTitle('')
         self.setMinimumSize(470, 115)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
@@ -88,13 +84,3 @@ class mainDialog(QtWidgets.QDialog):
                                                                                 CONST.SELECTED_FILTER)
         if file_path:
             self.lineEdit.setText(file_path)
-if __name__ == '__main__':
-
-    global open_import_dialog
-    try:
-        open_import_dialog.close()
-        open_import_dialog.deleteLater()
-    except:
-        pass
-    open_import_dialog = mainDialog()
-    open_import_dialog.show()

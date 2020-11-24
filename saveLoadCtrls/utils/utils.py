@@ -1,7 +1,7 @@
 import os
 import json
 import maya.api.OpenMaya as om2
-from mayaTools.saveLoadCtrls.core import saveLoadCtrls as core
+import mayaTools.saveLoadCtrls.core.saveLoadCtrls as core
 
 
 def toFile(jsonDataDump, userPath, filename):
