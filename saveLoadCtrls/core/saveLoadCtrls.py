@@ -1,4 +1,4 @@
-'''
+"""
 Author:Fangmin Chen
 Version: 1.0
 
@@ -10,7 +10,7 @@ USAGE load: run load method to try load select ctrl/s
 toDo list: Enable load everything in json file
 toDo list: Currently ctrls needs to be uniquely named
 toDo list: loading a negative XYZ value on selected object, will not work correctly. another item for my
-'''
+"""
 
 import os
 import re
@@ -22,16 +22,16 @@ from mayaTools.saveLoadCtrls.utils import utils as utils
 
 FINDDIGITS = re.compile(CONST.FINDDIGITS)
 dagPath = om2.MDagPath()
+jsonDataDict = dict()
+treeList = list()
 
-
-
-def jsonNode( ctrlName, parentNode, matrix):
-    '''
+def jsonNode(ctrlName, parentNode, matrix):
+    """
     create json node
     :param ctrlName: str, fullDagPath with namespace replaced with wildcard sign
     :param matrix
     :return: json
-    '''
+    """
     nodeDict = {
         ctrlName:
             {
@@ -42,13 +42,13 @@ def jsonNode( ctrlName, parentNode, matrix):
     return nodeDict
 
 
-def setFloatWithConditions( srtMTransMtx, mPlugList):
-    '''
+def setFloatWithConditions(srtMTransMtx, mPlugList):
+    """
     Setting values on unlocked attributes
     :param srtMTransMtx: MTransformationMatrix (translation, rotation or scale)
     :param mPlugList: MPlug
     :return: None
-    '''
+    """
     for idx, srtPlug in enumerate(mPlugList):
         if not srtPlug.isLocked and not srtPlug.isFreeToChange():
             srtPlug.setFloat(srtMTransMtx[idx])
@@ -56,14 +56,14 @@ def setFloatWithConditions( srtMTransMtx, mPlugList):
             continue
 
 
-def setAtters( mObjectHandle, mtx, matchScl=True):
-    '''
+def setAtters(mObjectHandle, mtx, matchScl=True):
+    """
     Sets translation/rotation
     :param mObjectHandle: MObjectHandle
     :param mtx: MMatrix
     :param matchScl: bool, default False, match scale
     :return: None
-    '''
+    """
     if mObjectHandle.isValid():
         mObj = mObjectHandle.object()
         mFn = om2.MFnDependencyNode(mObj)
@@ -90,33 +90,76 @@ def setAtters( mObjectHandle, mtx, matchScl=True):
             setFloatWithConditions(scl, [sclX, sclY, sclZ])
 
 
-def saveCtrlMtx( USERHOMEPATH, FILENAME):
-    '''
+def getNextCtrlNode(mObjHandle):
+    """
+    Recursively find parent node and stops at the given blacklist
+    :param mObjHandle: MObjectHandle
+    :return: None
+    """
+    blackList = ['world', 'rig']
+    if mObjHandle.isValid():
+        mObj = mObjHandle.object()
+        mFnDag = om2.MFnDagNode(mObj)
+        nextCtrlNode = mFnDag.parent(0)
+        parentMFnDag = om2.MFnDagNode(nextCtrlNode)
+
+        mFnDepend = om2.MFnDependencyNode(nextCtrlNode)
+        nextCtrlNodeMObjHandle = om2.MObjectHandle(nextCtrlNode)
+
+        name = utils.stripNameSpace(mFnDag.name())
+        parentName = utils.stripNameSpace(mFnDepend.name())
+        mtx = utils.getMatrix(mObjHandle)
+        if parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve or parentMFnDag.childCount() > 1 \
+                or parentName in blackList:
+            jsonDataDict.update(jsonNode(name, '', mtx))
+            return
+        else:
+            jsonDataDict.update(jsonNode(name, parentName, mtx))
+            getNextCtrlNode(nextCtrlNodeMObjHandle)
+
+
+def getTreeList(jsonData, objName):
+    """
+    Recursively add the parent srtBuffers to a parentList
+    :param jsonData: json
+    :param objName: str
+    :return: None
+    """
+    if jsonData[objName].get('parent') == '':
+        return
+    else:
+        parent = jsonData[objName].get('parent')
+        treeList.append(parent)
+        getTreeList(jsonData, parent)
+
+
+def saveCtrlMtx(userHomePath, filename):
+    """
     Save all selected ctrl and parents world matrix
-    '''
-    print(USERHOMEPATH, FILENAME)
+    """
+    print(userHomePath, filename)
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 
     for mObj in mObjs:
         if mObj.apiType() == om2.MFn.kTransform:
             mObjHandle = om2.MObjectHandle(mObj)
-            utils.getNextCtrlNode(mObjHandle)
+            getNextCtrlNode(mObjHandle)
 
-    if os.path.isdir(USERHOMEPATH):
-        utils.toFile(jsonDataDict, USERHOMEPATH, FILENAME)
+    if os.path.isdir(userHomePath):
+        utils.toFile(jsonDataDict, userHomePath, filename)
     else:
-        os.makedirs(USERHOMEPATH)
-        utils.toFile(jsonDataDict, USERHOMEPATH, FILENAME)
+        os.makedirs(userHomePath)
+        utils.toFile(jsonDataDict, userHomePath, filename)
     print('Save Done!')
 
 
 def loadCtrlMtx( matchScl=False, loadBuffers=False):
-    '''
+    """
     load ctrl mtx
     if: there is a selection the script will try to load the value on the selected ctrl
     else: try to load everything from file
-    '''
+    """
 
     treeList = list()
     jsonData = utils.fromFile(CONST.USERHOMEPATH, CONST.FILENAME)
@@ -128,7 +171,7 @@ def loadCtrlMtx( matchScl=False, loadBuffers=False):
         objName = utils.stripNameSpace(name)
 
         treeList.append(objName)
-        utils.getTreeList(jsonData, objName)
+        getTreeList(jsonData, objName)
 
         if objName in jsonData:
             objectList = [objName]
