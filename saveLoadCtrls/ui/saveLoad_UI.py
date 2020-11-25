@@ -4,7 +4,8 @@ from shiboken2 import wrapInstance
 import maya.OpenMayaUI as omUi
 from mayaTools.saveLoadCtrls.constants import constants as CONST
 from mayaTools.saveLoadCtrls.core import saveLoadCtrls as core
-
+reload(CONST)
+reload(core)
 
 def maya_main_window():
     """
@@ -15,8 +16,6 @@ def maya_main_window():
     return wrapInstance(int(maya_main_ptr), QtWidgets.QWidget)
 
 class MainDialog(QtWidgets.QDialog):
-
-
     def __init__(self, parent=maya_main_window()):
         super(MainDialog, self).__init__(parent)
         self.setWindowTitle('')
@@ -28,6 +27,10 @@ class MainDialog(QtWidgets.QDialog):
 
 
     def create_widgets(self):
+        """
+        pyside2 create widgets
+        :return: None
+        """
         self.lineEdit = QtWidgets.QLineEdit('{}\\{}'.format(CONST.USERHOMEPATH, CONST.DEFAULTFILENAME))
         self.loadBuffers_checkBox = QtWidgets.QCheckBox('Load Buffers')
         self.loadBuffers_checkBox.setChecked(True)
@@ -38,7 +41,10 @@ class MainDialog(QtWidgets.QDialog):
         self.load_btn = QtWidgets.QPushButton('Load')
 
     def create_layout(self):
-
+        """
+        pyside2 create layout
+        :return: None
+        """
         self.uiTopHBox = QtWidgets.QHBoxLayout()
         self.uiTopHBox.addWidget(self.lineEdit)
         self.uiTopHBox.addWidget(self.path_btn)
@@ -59,6 +65,10 @@ class MainDialog(QtWidgets.QDialog):
         self.main_vBoxLayout.addLayout(self.btn_hBoxLayout)
 
     def create_connections(self):
+        """
+        pyside2 create connections
+        :return: None
+        """
         self.path_btn.clicked.connect(self.setfilePath)
         self.save_btn.clicked.connect(self.saveCtrls)
         self.load_btn.clicked.connect(self.loadCtrls)
@@ -67,6 +77,10 @@ class MainDialog(QtWidgets.QDialog):
         core.saveCtrlMtx(self.lineEdit.text())
 
     def loadCtrls(self):
+        """
+        pyside2 connection instructions for load ctrl button
+        :return: None
+        """
         matchScl = False
         loadBuffers = False
         if self.loadScale_checkBox.isChecked():
@@ -79,6 +93,10 @@ class MainDialog(QtWidgets.QDialog):
         core.loadCtrlMtx(self.lineEdit.text(), matchScl=matchScl, loadBuffers=loadBuffers)
 
     def setfilePath(self):
+        """
+        pyside2 connection instructions for setPath button
+        :return: None
+        """
         file_path, self.selected_filter = QtWidgets.QFileDialog.getOpenFileName(self, "Select File",
                                                                                 CONST.USERHOMEPATH,
                                                                                 CONST.FILE_FILTERS,

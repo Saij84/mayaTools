@@ -18,6 +18,7 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 from mayaTools.saveLoadCtrls.constants import constants as CONST
 from mayaTools.saveLoadCtrls.utils import utils as utils
+reload(utils)
 
 FINDDIGITS = re.compile(CONST.FINDDIGITS)
 dagPath = om2.MDagPath()
@@ -166,7 +167,6 @@ def loadCtrlMtx(fullPath, matchScl=True, loadBuffers=True):
     else: try to load everything from file
     """
 
-    treeList = list()
     jsonData = utils.fromFile(fullPath)
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
@@ -178,8 +178,8 @@ def loadCtrlMtx(fullPath, matchScl=True, loadBuffers=True):
         treeList.append(objName)
         getTreeList(jsonData, objName)
 
+        print(treeList)
         if objName in jsonData:
-            print('objName:', objName)
             objectList = [objName]
             if loadBuffers:
                 objectList = reversed(treeList)
