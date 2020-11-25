@@ -28,7 +28,7 @@ class MainDialog(QtWidgets.QDialog):
 
 
     def create_widgets(self):
-        self.lineEdit = QtWidgets.QLineEdit('{}\\{}'.format(CONST.USERHOMEPATH, CONST.FILENAME))
+        self.lineEdit = QtWidgets.QLineEdit('{}\\{}'.format(CONST.USERHOMEPATH, CONST.DEFAULTFILENAME))
         self.loadBuffers_checkBox = QtWidgets.QCheckBox('Load Buffers')
         self.loadBuffers_checkBox.setChecked(True)
         self.loadScale_checkBox = QtWidgets.QCheckBox('Load Scale')
@@ -64,7 +64,7 @@ class MainDialog(QtWidgets.QDialog):
         self.load_btn.clicked.connect(self.loadCtrls)
 
     def saveCtrls(self):
-        core.saveCtrlMtx(CONST.USERHOMEPATH, CONST.FILENAME)
+        core.saveCtrlMtx(self.lineEdit.text())
 
     def loadCtrls(self):
         matchScl = False
@@ -75,11 +75,12 @@ class MainDialog(QtWidgets.QDialog):
         if self.loadBuffers_checkBox.isChecked():
             loadBuffers = True
 
-        core.loadCtrlMtx(matchScl=matchScl, loadBuffers=loadBuffers)
+        print('matchScl:', matchScl, 'loadBuffers:', loadBuffers)
+        core.loadCtrlMtx(self.lineEdit.text(), matchScl=matchScl, loadBuffers=loadBuffers)
 
     def setfilePath(self):
         file_path, self.selected_filter = QtWidgets.QFileDialog.getOpenFileName(self, "Select File",
-                                                                                "",
+                                                                                CONST.USERHOMEPATH,
                                                                                 CONST.FILE_FILTERS,
                                                                                 CONST.SELECTED_FILTER)
         if file_path:
