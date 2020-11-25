@@ -24,7 +24,7 @@ def fromFile(userPath, filename):
         return jsonData
 
 
-def getMatrix( mObjectHandle, matrixPlug='worldMatrix'):
+def getMatrix(mObjectHandle, matrixPlug='worldMatrix'):
     """
     Get matrix, if plug is an array it will return index 0 of that plug
     :param mObjectHandle: MObjectHandle
@@ -45,7 +45,7 @@ def getMatrix( mObjectHandle, matrixPlug='worldMatrix'):
         return serializableMtx
 
 
-def stripNameSpace( objName):
+def stripNameSpace(objName):
     """
     Check to see if there is a namespace on the incoming name, if yes, strip and return name with no namespace
     :param name: str

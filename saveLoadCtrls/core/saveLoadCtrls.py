@@ -14,7 +14,6 @@ toDo list: loading a negative XYZ value on selected object, will not work correc
 
 import os
 import re
-
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 from mayaTools.saveLoadCtrls.constants import constants as CONST
