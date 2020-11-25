@@ -1,8 +1,8 @@
 import sys
 if not "C:\\tools\\" in sys.path:
     sys.path.append("C:\\tools\\")
-from mayaTools.saveLoadCtrls.ui.saveLoad_UI import MainDialog
-
+import mayaTools.saveLoadCtrls.ui.saveLoad_UI as test
+reload(test)
 
 if __name__ == '__main__':
 
@@ -12,5 +12,5 @@ if __name__ == '__main__':
         open_import_dialog.deleteLater()
     except:
         pass
-    open_import_dialog = MainDialog()
+    open_import_dialog = test.MainDialog()
     open_import_dialog.show()

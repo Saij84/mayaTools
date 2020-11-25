@@ -3,23 +3,23 @@ import json
 import maya.api.OpenMaya as om2
 
 
-def toFile(jsonDataDump, userPath, filename):
+def toFile(jsonDataDump, fullPath):
     """
     Write to json file
     :param jsonDataDump: json data
     :return: None
     """
-    with open(os.path.join(userPath, filename), 'w') as jDump2File:
+    with open(fullPath, 'w') as jDump2File:
         json.dump(jsonDataDump, jDump2File)
 
 
-def fromFile(userPath, filename):
+def fromFile(fullPath):
     """
     Read json file
     :param filename: str
     :return: json dictionary
     """
-    with open(os.path.join(userPath, filename), 'r') as jsonFile:
+    with open(fullPath, 'r') as jsonFile:
         jsonData = json.load(jsonFile)
         return jsonData
 

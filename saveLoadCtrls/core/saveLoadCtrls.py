@@ -24,6 +24,7 @@ dagPath = om2.MDagPath()
 jsonDataDict = dict()
 treeList = list()
 
+
 def jsonNode(ctrlName, parentNode, matrix):
     """
     create json node
@@ -132,11 +133,16 @@ def getTreeList(jsonData, objName):
         getTreeList(jsonData, parent)
 
 
-def saveCtrlMtx(userHomePath, filename):
+def saveCtrlMtx(fullPath):
     """
     Save all selected ctrl and parents world matrix
     """
-    print(userHomePath, filename)
+    userHomePath = CONST.USERHOMEPATH
+
+    if fullPath:
+        pathSplit = fullPath.split('\\')
+        userHomePath = '\\'.join(pathSplit[:-1])
+
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 
@@ -146,14 +152,14 @@ def saveCtrlMtx(userHomePath, filename):
             getNextCtrlNode(mObjHandle)
 
     if os.path.isdir(userHomePath):
-        utils.toFile(jsonDataDict, userHomePath, filename)
+        utils.toFile(jsonDataDict, fullPath)
     else:
         os.makedirs(userHomePath)
-        utils.toFile(jsonDataDict, userHomePath, filename)
+        utils.toFile(jsonDataDict, fullPath)
     print('Save Done!')
 
 
-def loadCtrlMtx( matchScl=False, loadBuffers=False):
+def loadCtrlMtx(fullPath, matchScl=True, loadBuffers=True):
     """
     load ctrl mtx
     if: there is a selection the script will try to load the value on the selected ctrl
@@ -161,7 +167,7 @@ def loadCtrlMtx( matchScl=False, loadBuffers=False):
     """
 
     treeList = list()
-    jsonData = utils.fromFile(CONST.USERHOMEPATH, CONST.FILENAME)
+    jsonData = utils.fromFile(fullPath)
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
     for mobj in mObjs:
@@ -173,9 +179,11 @@ def loadCtrlMtx( matchScl=False, loadBuffers=False):
         getTreeList(jsonData, objName)
 
         if objName in jsonData:
+            print('objName:', objName)
             objectList = [objName]
             if loadBuffers:
                 objectList = reversed(treeList)
+
 
             for obj in objectList:
                 myObjName = obj
