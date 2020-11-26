@@ -1,4 +1,3 @@
-import os
 import json
 import maya.api.OpenMaya as om2
 

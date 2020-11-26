@@ -7,9 +7,7 @@ load: json file value and multiply with ctrls inverseParentMatrix
 USAGE save: Select Ctrl/s run save method to save
 USAGE load: run load method to try load select ctrl/s
 
-toDo list: Enable load everything in json file
-toDo list: Currently ctrls needs to be uniquely named
-toDo list: loading a negative XYZ value on selected object, will not work correctly. another item for my
+toDo: implement save levels
 """
 
 import os
@@ -23,8 +21,6 @@ reload(utils)
 FINDDIGITS = re.compile(CONST.FINDDIGITS)
 dagPath = om2.MDagPath()
 jsonDataDict = dict()
-treeList = list()
-
 
 def jsonNode(ctrlName, parentNode, matrix):
     """
@@ -43,7 +39,7 @@ def jsonNode(ctrlName, parentNode, matrix):
     return nodeDict
 
 
-def setFloatWithConditions(srtMTransMtx, mPlugList):
+def setValueOnUnlocked(srtMTransMtx, mPlugList):
     """
     Setting values on unlocked attributes
     :param srtMTransMtx: MTransformationMatrix (translation, rotation or scale)
@@ -76,19 +72,19 @@ def setAtters(mObjectHandle, mtx, matchScl=True):
         transX = mFn.findPlug('translateX', False)
         transY = mFn.findPlug('translateY', False)
         transZ = mFn.findPlug('translateZ', False)
-        setFloatWithConditions(trans, [transX, transY, transZ])
+        setValueOnUnlocked(trans, [transX, transY, transZ])
 
         rotX = mFn.findPlug('rotateX', False)
         rotY = mFn.findPlug('rotateY', False)
         rotZ = mFn.findPlug('rotateZ', False)
-        setFloatWithConditions(rot, [rotX, rotY, rotZ])
+        setValueOnUnlocked(rot, [rotX, rotY, rotZ])
 
         if matchScl:
             scl = mTransMtx.scale(om2.MSpace.kObject)
             sclX = mFn.findPlug('scaleX', False)
             sclY = mFn.findPlug('scaleY', False)
             sclZ = mFn.findPlug('scaleZ', False)
-            setFloatWithConditions(scl, [sclX, sclY, sclZ])
+            setValueOnUnlocked(scl, [sclX, sclY, sclZ])
 
 
 def getNextCtrlNode(mObjHandle):
@@ -110,6 +106,8 @@ def getNextCtrlNode(mObjHandle):
         name = utils.stripNameSpace(mFnDag.name())
         parentName = utils.stripNameSpace(mFnDepend.name())
         mtx = utils.getMatrix(mObjHandle)
+
+        # check if the parent is a curve or got more than one child or parent in blacklist
         if parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve or parentMFnDag.childCount() > 1 \
                 or parentName in blackList:
             jsonDataDict.update(jsonNode(name, '', mtx))
@@ -119,7 +117,7 @@ def getNextCtrlNode(mObjHandle):
             getNextCtrlNode(nextCtrlNodeMObjHandle)
 
 
-def getTreeList(jsonData, objName):
+def getTreeList(jsonData, objName, treeList):
     """
     Recursively add the parent srtBuffers to a parentList
     :param jsonData: json
@@ -131,7 +129,7 @@ def getTreeList(jsonData, objName):
     else:
         parent = jsonData[objName].get('parent')
         treeList.append(parent)
-        getTreeList(jsonData, parent)
+        getTreeList(jsonData, parent, treeList)
 
 
 def saveCtrlMtx(fullPath):
@@ -166,24 +164,24 @@ def loadCtrlMtx(fullPath, matchScl=True, loadBuffers=True):
     if: there is a selection the script will try to load the value on the selected ctrl
     else: try to load everything from file
     """
-
+    treeList = list()
     jsonData = utils.fromFile(fullPath)
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
+
     for mobj in mObjs:
         mFn = om2.MFnDependencyNode(mobj)
         name = mFn.name()
         objName = utils.stripNameSpace(name)
 
+        # populate list for loading
         treeList.append(objName)
-        getTreeList(jsonData, objName)
+        getTreeList(jsonData, objName, treeList)
 
-        print(treeList)
         if objName in jsonData:
             objectList = [objName]
             if loadBuffers:
                 objectList = reversed(treeList)
-
 
             for obj in objectList:
                 myObjName = obj
@@ -197,6 +195,7 @@ def loadCtrlMtx(fullPath, matchScl=True, loadBuffers=True):
                 parentInverseMtx = utils.getMatrix(drivenMObjHandle, 'parentInverseMatrix')
                 parentInverseMMtx = om2.MMatrix(parentInverseMtx)
 
+                # matrix mult
                 mtx = fromFileMtx * parentInverseMMtx
 
                 setAtters(drivenMObjHandle, mtx, matchScl=matchScl)

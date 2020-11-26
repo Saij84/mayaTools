@@ -7,6 +7,7 @@ from mayaTools.saveLoadCtrls.core import saveLoadCtrls as core
 reload(CONST)
 reload(core)
 
+
 def maya_main_window():
     """
     Get Maya main window
@@ -14,6 +15,7 @@ def maya_main_window():
     """
     maya_main_ptr = omUi.MQtUtil.mainWindow()
     return wrapInstance(int(maya_main_ptr), QtWidgets.QWidget)
+
 
 class MainDialog(QtWidgets.QDialog):
     def __init__(self, parent=maya_main_window()):
@@ -40,6 +42,7 @@ class MainDialog(QtWidgets.QDialog):
         self.save_btn = QtWidgets.QPushButton('Save')
         self.load_btn = QtWidgets.QPushButton('Load')
 
+
     def create_layout(self):
         """
         pyside2 create layout
@@ -64,6 +67,7 @@ class MainDialog(QtWidgets.QDialog):
         self.main_vBoxLayout.addLayout(self.uiFormLayout)
         self.main_vBoxLayout.addLayout(self.btn_hBoxLayout)
 
+
     def create_connections(self):
         """
         pyside2 create connections
@@ -73,8 +77,10 @@ class MainDialog(QtWidgets.QDialog):
         self.save_btn.clicked.connect(self.saveCtrls)
         self.load_btn.clicked.connect(self.loadCtrls)
 
+
     def saveCtrls(self):
         core.saveCtrlMtx(self.lineEdit.text())
+
 
     def loadCtrls(self):
         """
@@ -89,8 +95,8 @@ class MainDialog(QtWidgets.QDialog):
         if self.loadBuffers_checkBox.isChecked():
             loadBuffers = True
 
-        print('matchScl:', matchScl, 'loadBuffers:', loadBuffers)
         core.loadCtrlMtx(self.lineEdit.text(), matchScl=matchScl, loadBuffers=loadBuffers)
+
 
     def setfilePath(self):
         """

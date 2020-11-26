@@ -1,7 +1,7 @@
 import sys
 if not "C:\\tools\\" in sys.path:
     sys.path.append("C:\\tools\\")
-import mayaTools.saveLoadCtrls.ui.saveLoad_UI as mainUI
+import mayaTools.saveLoadCtrls.ui.saveLoadCtrl_UI as mainUI
 reload(mainUI)
 
 if __name__ == '__main__':
