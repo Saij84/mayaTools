@@ -30,14 +30,23 @@ class MainDialog(QtWidgets.QDialog):
 
     def create_widgets(self):
         """
-        pyside2 create widgets
+        pyside2 create widgets and set defaults
         :return: None
         """
+
         self.lineEdit = QtWidgets.QLineEdit('{}\\{}'.format(CONST.USERHOMEPATH, CONST.DEFAULTFILENAME))
+
+        self.levelSpinBox = QtWidgets.QSpinBox()
+        self.levelSpinBox.setValue(3)
+
+        self.levelSpinBoxLable = QtWidgets.QLabel('Set Levels')
+
         self.loadBuffers_checkBox = QtWidgets.QCheckBox('Load Buffers')
         self.loadBuffers_checkBox.setChecked(True)
+
         self.loadScale_checkBox = QtWidgets.QCheckBox('Load Scale')
         self.loadScale_checkBox.setChecked(True)
+
         self.path_btn = QtWidgets.QPushButton('...')
         self.save_btn = QtWidgets.QPushButton('Save')
         self.load_btn = QtWidgets.QPushButton('Load')
@@ -51,8 +60,15 @@ class MainDialog(QtWidgets.QDialog):
         self.uiTopHBox = QtWidgets.QHBoxLayout()
         self.uiTopHBox.addWidget(self.lineEdit)
         self.uiTopHBox.addWidget(self.path_btn)
+
+        self.levelSpinBoxHBox = QtWidgets.QHBoxLayout()
+        self.levelSpinBoxHBox.addWidget(self.levelSpinBoxLable)
+        self.levelSpinBoxHBox.addWidget(self.levelSpinBox)
+        self.levelSpinBoxHBox.addStretch()
+
         self.uiFormLayout = QtWidgets.QFormLayout()
         self.uiFormLayout.addRow('Path: ', self.uiTopHBox)
+        self.uiFormLayout.addRow('', self.levelSpinBoxHBox)
         self.uiFormLayout.addRow('', self.loadBuffers_checkBox)
         self.uiFormLayout.addRow('', self.loadScale_checkBox)
 
