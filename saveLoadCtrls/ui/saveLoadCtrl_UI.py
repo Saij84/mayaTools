@@ -4,8 +4,6 @@ from shiboken2 import wrapInstance
 import maya.OpenMayaUI as omUi
 from mayaTools.saveLoadCtrls.constants import constants as CONST
 from mayaTools.saveLoadCtrls.core import saveLoadCtrls as core
-reload(CONST)
-reload(core)
 
 
 def maya_main_window():
@@ -26,7 +24,6 @@ class MainDialog(QtWidgets.QDialog):
         self.create_widgets()
         self.create_layout()
         self.create_connections()
-
 
     def create_widgets(self):
         """
@@ -50,7 +47,6 @@ class MainDialog(QtWidgets.QDialog):
         self.path_btn = QtWidgets.QPushButton('...')
         self.save_btn = QtWidgets.QPushButton('Save')
         self.load_btn = QtWidgets.QPushButton('Load')
-
 
     def create_layout(self):
         """
@@ -83,7 +79,6 @@ class MainDialog(QtWidgets.QDialog):
         self.main_vBoxLayout.addLayout(self.uiFormLayout)
         self.main_vBoxLayout.addLayout(self.btn_hBoxLayout)
 
-
     def create_connections(self):
         """
         pyside2 create connections
@@ -93,10 +88,8 @@ class MainDialog(QtWidgets.QDialog):
         self.save_btn.clicked.connect(self.saveCtrls)
         self.load_btn.clicked.connect(self.loadCtrls)
 
-
     def saveCtrls(self):
-        core.saveCtrlMtx(self.lineEdit.text())
-
+        core.saveCtrlMtx(self.lineEdit.text(), self.levelSpinBox.value())
 
     def loadCtrls(self):
         """
@@ -112,7 +105,6 @@ class MainDialog(QtWidgets.QDialog):
             loadBuffers = True
 
         core.loadCtrlMtx(self.lineEdit.text(), matchScl=matchScl, loadBuffers=loadBuffers)
-
 
     def setfilePath(self):
         """

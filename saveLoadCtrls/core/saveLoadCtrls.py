@@ -6,8 +6,6 @@ Save: selected ctrl/s worldmatrix to a json file
 load: json file value and multiply with ctrls inverseParentMatrix
 USAGE save: Select Ctrl/s run save method to save
 USAGE load: run load method to try load select ctrl/s
-
-toDo: implement save levels
 """
 
 import os
@@ -16,11 +14,10 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 from mayaTools.saveLoadCtrls.constants import constants as CONST
 from mayaTools.saveLoadCtrls.utils import utils as utils
-reload(utils)
 
 FINDDIGITS = re.compile(CONST.FINDDIGITS)
 dagPath = om2.MDagPath()
-jsonDataDict = dict()
+
 
 def jsonNode(ctrlName, parentNode, matrix):
     """
@@ -87,34 +84,33 @@ def setAtters(mObjectHandle, mtx, matchScl=True):
             setValueOnUnlocked(scl, [sclX, sclY, sclZ])
 
 
-def getNextCtrlNode(mObjHandle):
+def getNextCtrlNode(mObjHandle, saveLevels, jsonDataDict):
     """
-    Recursively find parent node and stops at the given blacklist
+    Recursively find parent node and stops at given int or blacklist
     :param mObjHandle: MObjectHandle
+    :param saveLevels: int
     :return: None
     """
-    blackList = ['world', 'rig']
+    blackList = ['world']
     if mObjHandle.isValid():
         mObj = mObjHandle.object()
         mFnDag = om2.MFnDagNode(mObj)
-        nextCtrlNode = mFnDag.parent(0)
-        parentMFnDag = om2.MFnDagNode(nextCtrlNode)
+        nextCtrlParentNode = mFnDag.parent(0)
 
-        mFnDepend = om2.MFnDependencyNode(nextCtrlNode)
-        nextCtrlNodeMObjHandle = om2.MObjectHandle(nextCtrlNode)
+        mFnDepend = om2.MFnDependencyNode(nextCtrlParentNode)
+        nextCtrlNodeMObjHandle = om2.MObjectHandle(nextCtrlParentNode)
 
         name = utils.stripNameSpace(mFnDag.name())
         parentName = utils.stripNameSpace(mFnDepend.name())
         mtx = utils.getMatrix(mObjHandle)
 
-        # check if the parent is a curve or got more than one child or parent in blacklist
-        if parentMFnDag.child(0).apiType() == om2.MFn.kNurbsCurve or parentMFnDag.childCount() > 1 \
-                or parentName in blackList:
+        if saveLevels == 0 or parentName in blackList:
             jsonDataDict.update(jsonNode(name, '', mtx))
             return
         else:
             jsonDataDict.update(jsonNode(name, parentName, mtx))
-            getNextCtrlNode(nextCtrlNodeMObjHandle)
+            saveLevels = saveLevels - 1
+            getNextCtrlNode(nextCtrlNodeMObjHandle, saveLevels, jsonDataDict)
 
 
 def getTreeList(jsonData, objName, treeList):
@@ -122,6 +118,7 @@ def getTreeList(jsonData, objName, treeList):
     Recursively add the parent srtBuffers to a parentList
     :param jsonData: json
     :param objName: str
+    :param treeList: list
     :return: None
     """
     if jsonData[objName].get('parent') == '':
@@ -132,12 +129,14 @@ def getTreeList(jsonData, objName, treeList):
         getTreeList(jsonData, parent, treeList)
 
 
-def saveCtrlMtx(fullPath):
+def saveCtrlMtx(fullPath, saveLevels):
     """
     Save all selected ctrl and parents world matrix
     """
-    userHomePath = CONST.USERHOMEPATH
-
+    jsonDataDict = dict()
+    DEAFULTUSERHOMEPATH = CONST.USERHOMEPATH
+    userHomePath = ''
+    # split home string from lineedit widget
     if fullPath:
         pathSplit = fullPath.split('\\')
         userHomePath = '\\'.join(pathSplit[:-1])
@@ -148,9 +147,9 @@ def saveCtrlMtx(fullPath):
     for mObj in mObjs:
         if mObj.apiType() == om2.MFn.kTransform:
             mObjHandle = om2.MObjectHandle(mObj)
-            getNextCtrlNode(mObjHandle)
+            getNextCtrlNode(mObjHandle, saveLevels, jsonDataDict)
 
-    if os.path.isdir(userHomePath):
+    if os.path.isdir(userHomePath) or os.path.isdir(DEAFULTUSERHOMEPATH):
         utils.toFile(jsonDataDict, fullPath)
     else:
         os.makedirs(userHomePath)
@@ -169,6 +168,7 @@ def loadCtrlMtx(fullPath, matchScl=True, loadBuffers=True):
     selList = om2.MGlobal.getActiveSelectionList()
     mObjs = [selList.getDependNode(idx) for idx in range(selList.length())]
 
+    # loop through selection
     for mobj in mObjs:
         mFn = om2.MFnDependencyNode(mobj)
         name = mFn.name()
@@ -178,6 +178,7 @@ def loadCtrlMtx(fullPath, matchScl=True, loadBuffers=True):
         treeList.append(objName)
         getTreeList(jsonData, objName, treeList)
 
+        # reverse list so the top top node loads first
         if objName in jsonData:
             objectList = [objName]
             if loadBuffers:
