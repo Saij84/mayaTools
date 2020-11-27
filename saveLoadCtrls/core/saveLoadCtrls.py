@@ -9,14 +9,10 @@ USAGE load: run load method to try load select ctrl/s
 """
 
 import os
-import re
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
 from mayaTools.saveLoadCtrls.constants import constants as CONST
 from mayaTools.saveLoadCtrls.utils import utils as utils
-
-FINDDIGITS = re.compile(CONST.FINDDIGITS)
-dagPath = om2.MDagPath()
 
 
 def jsonNode(ctrlName, parentNode, matrix):

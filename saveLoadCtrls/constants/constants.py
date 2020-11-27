@@ -1,4 +1,3 @@
-FINDDIGITS = r'\d+'
 DEFAULTFILENAME = 'ctrlWorldMtx_v001.json'
 USERHOMEPATH = 'C:\\tools\\mayaTools\\saveLoadCtrls\\json'
 
